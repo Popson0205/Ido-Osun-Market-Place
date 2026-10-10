@@ -58,3 +58,7 @@ CREATE TABLE IF NOT EXISTS reports (
   resolved BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Product descriptions and deal prices (added in v1.3; safe to re-run)
+ALTER TABLE products ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS old_price INT;

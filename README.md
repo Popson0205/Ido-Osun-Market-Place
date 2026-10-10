@@ -16,6 +16,14 @@ Register on the site with the exact email set in `ADMIN_EMAIL`. That account get
 - **Vendor dashboard:** edit store details, add/hide/delete products, change prices, see recent orders.
 - **Ordering:** the cart is grouped by store. The server recomputes prices from the database, saves the order, and returns a `wa.me` link to that vendor's number with the order text. The vendor sees it in their dashboard too.
 
+## Storefront
+Marketplace-style home page: rotating banner, category icons, Deals, Just in, and local stores. Search covers products, vendors and categories; shop pages have category chips, sorting and Load more. Each product has a detail page (photo, price, discount, description, vendor, share, ask the vendor on WhatsApp) and the cart steppers work from any page. On phones there is a bottom bar (Home, Categories, Cart, Account); on desktop the grid widens automatically.
+Vendors can set an optional **old price** (shows a -% badge and puts the product in Deals) and a short **description** from the dashboard.
+
+## Demo data for presentations
+Admin screen > **Demo data** > *Load demo products*. It adds 9 sample stores and 28 products across all categories (9 with deal prices) with placeholder images. Enter your own WhatsApp number when asked, so orders placed during the demo open in your WhatsApp. The alert shows a demo vendor login so you can show the vendor dashboard. *Remove demo data* deletes everything it created and nothing else. Remove the demo data before opening to the public.
+To use real photos, replace files in `seed/images/` (same names, JPEG, under 400 KB) and press Reload. Edit `seed/demo.json` to change names, prices or descriptions.
+
 ## Order alerts
 Vendors see a badge on the account icon and a NEW tag on fresh orders in their dashboard. For email alerts too, create a free account at resend.com, verify your sending address, and set `RESEND_API_KEY` and `MAIL_FROM`. Without them the app simply skips email.
 

@@ -3,6 +3,7 @@ const fs = require('fs'), path = require('path');
 const express = require('express'), helmet = require('helmet'), rateLimit = require('express-rate-limit');
 const { Pool } = require('pg'), bcrypt = require('bcryptjs'), jwt = require('jsonwebtoken');
 const QRCode = require('qrcode');
+const demo = require('./demo');
 
 const { DATABASE_URL, JWT_SECRET, ADMIN_EMAIL = '' } = process.env;
 if (!DATABASE_URL || !JWT_SECRET || JWT_SECRET.length < 24) {
@@ -84,8 +85,37 @@ app.get('/api/stores', ah(async (req, res) => {
 app.get('/api/stores/:id', ah(async (req, res) => {
   const s = (await db.query("SELECT id,name,description,category,location,whatsapp,(image IS NOT NULL) AS img,image_v FROM stores WHERE id=$1 AND status='approved'", [req.params.id])).rows[0];
   if (!s) return bad(res, 'Store not found', 404);
-  s.products = (await db.query('SELECT id,name,price,(image IS NOT NULL) AS img,image_v FROM products WHERE store_id=$1 AND active ORDER BY id', [s.id])).rows;
+  s.products = (await db.query('SELECT id,name,price,old_price,(image IS NOT NULL) AS img,image_v FROM products WHERE store_id=$1 AND active ORDER BY id DESC', [s.id])).rows;
   res.json(s);
+}));
+
+/* ---------- product browsing (all approved stores) ---------- */
+app.get('/api/products', ah(async (req, res) => {
+  const q = '%' + String(req.query.q || '').trim().toLowerCase() + '%', cat = String(req.query.cat || ''), deals = req.query.deals === '1';
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 24, 1), 48), offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+  const sorts = { new: 'p.id DESC', price_asc: 'p.price ASC, p.id DESC', price_desc: 'p.price DESC, p.id DESC' };
+  const order = sorts[req.query.sort] || (deals ? '(p.old_price-p.price)*100.0/p.old_price DESC, p.id DESC' : 'p.id DESC');
+  res.json((await db.query(
+    `SELECT p.id,p.name,p.price,p.old_price,(p.image IS NOT NULL) AS img,p.image_v,
+            s.id AS store_id,s.name AS store_name,s.category,s.location
+     FROM products p JOIN stores s ON s.id=p.store_id
+     WHERE p.active AND s.status='approved' AND ($1='' OR s.category=$1)
+       AND (NOT $2::boolean OR (p.old_price IS NOT NULL AND p.old_price>p.price))
+       AND lower(p.name||' '||s.name||' '||s.category) LIKE $3
+     ORDER BY ${order} LIMIT ${limit} OFFSET ${offset}`, [cat, deals, q])).rows);
+}));
+
+app.get('/api/products/:id', ah(async (req, res) => {
+  const p = (await db.query(
+    `SELECT p.id,p.name,p.price,p.old_price,p.description,(p.image IS NOT NULL) AS img,p.image_v,
+            s.id AS store_id,s.name AS store_name,s.category,s.location,s.whatsapp
+     FROM products p JOIN stores s ON s.id=p.store_id
+     WHERE p.id=$1 AND p.active AND s.status='approved'`, [req.params.id])).rows[0];
+  if (!p) return bad(res, 'Product not found', 404);
+  p.related = (await db.query(
+    `SELECT id,name,price,old_price,(image IS NOT NULL) AS img,image_v FROM products
+     WHERE store_id=$1 AND active AND id<>$2 ORDER BY id DESC LIMIT 8`, [p.store_id, p.id])).rows;
+  res.json(p);
 }));
 
 /* ---------- order alerts: optional email to the vendor (set RESEND_API_KEY and MAIL_FROM) ---------- */
@@ -133,7 +163,7 @@ const mine = `(SELECT id FROM stores WHERE owner_id=$1)`;
 app.get('/api/vendor/store', need('vendor'), ah(async (req, res) => {
   const s = (await db.query('SELECT id,name,description,category,location,whatsapp,status,(image IS NOT NULL) AS img,image_v FROM stores WHERE owner_id=$1', [req.user.id])).rows[0];
   if (!s) return bad(res, 'No store found', 404);
-  s.products = (await db.query('SELECT id,name,price,active,(image IS NOT NULL) AS img,image_v FROM products WHERE store_id=$1 ORDER BY id', [s.id])).rows;
+  s.products = (await db.query('SELECT id,name,price,old_price,description,active,(image IS NOT NULL) AS img,image_v FROM products WHERE store_id=$1 ORDER BY id', [s.id])).rows;
   res.json(s);
 }));
 
@@ -147,16 +177,29 @@ app.put('/api/vendor/store', need('vendor'), ah(async (req, res) => {
 
 app.post('/api/vendor/products', need('vendor'), ah(async (req, res) => {
   const price = money(req.body.price), name = String(req.body.name || '').trim().slice(0, 100);
+  const raw = req.body.old_price, hasOld = !(raw === undefined || raw === null || raw === '');
+  const old = hasOld ? money(raw) : null;
   if (!name || price === null) return bad(res, 'Enter a product name and a valid price');
-  const r = await db.query(`INSERT INTO products(store_id,name,price) SELECT id,$2,$3 FROM stores WHERE owner_id=$1 RETURNING id`, [req.user.id, name, price]);
+  if (hasOld && (old === null || old <= price)) return bad(res, 'Old price must be higher than the price');
+  const r = await db.query('INSERT INTO products(store_id,name,price,old_price,description) SELECT id,$2,$3,$4,$5 FROM stores WHERE owner_id=$1 RETURNING id',
+    [req.user.id, name, price, old, String(req.body.description || '').trim().slice(0, 500)]);
   r.rowCount ? res.json({ id: r.rows[0].id }) : bad(res, 'No store found', 404);
 }));
 
 app.put('/api/vendor/products/:id', need('vendor'), ah(async (req, res) => {
-  const b = req.body, price = b.price === undefined ? null : money(b.price);
-  if (b.price !== undefined && price === null) return bad(res, 'Invalid price');
-  await db.query(`UPDATE products SET name=COALESCE($3,name),price=COALESCE($4,price),active=COALESCE($5,active)
-    WHERE id=$2 AND store_id=${mine}`, [req.user.id, req.params.id, b.name ? String(b.name).slice(0, 100) : null, price, typeof b.active === 'boolean' ? b.active : null]);
+  const b = req.body, sets = [], vals = [req.user.id, req.params.id];
+  const add = (c, v) => { vals.push(v); sets.push(`${c}=$${vals.length}`); };
+  if (b.name !== undefined) { const n = String(b.name).trim().slice(0, 100); if (!n) return bad(res, 'Name cannot be empty'); add('name', n); }
+  if (b.price !== undefined) { const p = money(b.price); if (p === null) return bad(res, 'Invalid price'); add('price', p); }
+  if (typeof b.active === 'boolean') add('active', b.active);
+  if (b.description !== undefined) add('description', String(b.description).trim().slice(0, 500));
+  if (b.old_price !== undefined) {
+    const none = b.old_price === null || b.old_price === '', o = none ? null : money(b.old_price);
+    if (!none && o === null) return bad(res, 'Invalid old price');
+    add('old_price', o);
+  }
+  if (!sets.length) return res.json({ ok: true });
+  await db.query(`UPDATE products SET ${sets.join(',')} WHERE id=$2 AND store_id=${mine}`, vals);
   res.json({ ok: true });
 }));
 
@@ -238,6 +281,15 @@ app.get('/qr.svg', ah(async (req, res) => {
   res.type('image/svg+xml').set('Cache-Control', 'public, max-age=86400')
     .send(await QRCode.toString(u, { type: 'svg', margin: 1, width: 600 }));
 }));
+
+/* ---------- demo data for presentations (admin only) ---------- */
+app.get('/api/admin/demo', need('admin'), ah(async (req, res) => res.json({ stores: await demo.count(db) })));
+app.post('/api/admin/demo/load', need('admin'), ah(async (req, res) => {
+  const wa = String(req.body.whatsapp || '').replace(/\D/g, '');
+  if (wa.length < 10 || wa.length > 15) return bad(res, 'Enter a valid WhatsApp number (e.g. 2348012345678) to receive demo orders');
+  res.json(await demo.load(db, wa));
+}));
+app.post('/api/admin/demo/clear', need('admin'), ah(async (req, res) => res.json({ removed: await demo.clear(db) })));
 
 /* ---------- static site + errors ---------- */
 app.use(express.static(path.join(__dirname, 'public')));

@@ -20,8 +20,8 @@ async function load(db, whatsapp) {
       const u = (await c.query("INSERT INTO users(first,last,email,password_hash,role) VALUES($1,'Demo',$2,$3,'vendor') RETURNING id",
         [s.name.split(' ')[0], email, hash])).rows[0];
       const st = (await c.query(
-        "INSERT INTO stores(owner_id,name,description,category,location,whatsapp,status,image,image_v) VALUES($1,$2,$3,$4,$5,$6,'approved',$7,1) RETURNING id",
-        [u.id, s.name, s.description, s.category, s.location, whatsapp, pic(`store-${s.slug}.jpg`)])).rows[0];
+        "INSERT INTO stores(owner_id,name,description,category,location,whatsapp,status,image,image_v,lat,lng,address) VALUES($1,$2,$3,$4,$5,$6,'approved',$7,1,$8,$9,$10) RETURNING id",
+        [u.id, s.name, s.description, s.category, s.location, whatsapp, pic(`store-${s.slug}.jpg`), s.lat, s.lng, s.address || null])).rows[0];
       stores.push({ id: st.id, s });
     }
     let products = 0;   // interleave stores so the home page shows variety

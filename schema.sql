@@ -85,3 +85,10 @@ CREATE TABLE IF NOT EXISTS password_resets (
 
 -- Stock (added in v1.3; safe to re-run). NULL = quantity not tracked (older products); 0 = sold out.
 ALTER TABLE products ADD COLUMN IF NOT EXISTS stock INT CHECK (stock >= 0);
+
+-- Shop locations (added in v1.7; safe to re-run). Plain WGS84 lat/lng; distances use the haversine formula.
+ALTER TABLE stores ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION;
+ALTER TABLE stores ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION;
+ALTER TABLE stores ADD COLUMN IF NOT EXISTS address TEXT;
+ALTER TABLE stores ADD COLUMN IF NOT EXISTS location_public BOOLEAN NOT NULL DEFAULT TRUE;
+CREATE INDEX IF NOT EXISTS idx_stores_geo ON stores(lat, lng);

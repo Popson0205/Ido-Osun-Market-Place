@@ -1,68 +1,289 @@
 {
   "stores": [
-    { "slug": "adeola-farms", "name": "Adeola Fresh Farms", "category": "Fresh Produce", "location": "Ido-Osun",
+    {
+      "slug": "adeola-farms",
+      "name": "Adeola Fresh Farms",
+      "category": "Fresh Produce",
+      "location": "Ido-Osun",
       "description": "Fresh vegetables, eggs and tubers from farms around Ido-Osun.",
       "products": [
-        { "slug": "tomatoes", "name": "Fresh Tomatoes (basket)", "price": 3500, "old_price": 4500, "description": "A full basket of ripe tomatoes, picked this week." },
-        { "slug": "yam", "name": "Yam Tubers (5 medium)", "price": 6500, "description": "Five medium white yam tubers, good for boiling, frying or pounding." },
-        { "slug": "eggs", "name": "Farm Eggs (crate of 30)", "price": 4800, "old_price": 5500, "description": "A crate of 30 fresh eggs from local poultry farms." },
-        { "slug": "pepper", "name": "Fresh Pepper (small basin)", "price": 2500, "description": "Mixed tatashe and rodo, ready for stews and sauces." }
-      ] },
-    { "slug": "mama-bisi", "name": "Mama Bisi Kitchen", "category": "Food", "location": "Osogbo",
+        {
+          "slug": "tomatoes",
+          "name": "Fresh Tomatoes (basket)",
+          "price": 3500,
+          "old_price": 4500,
+          "description": "A full basket of ripe tomatoes, picked this week."
+        },
+        {
+          "slug": "yam",
+          "name": "Yam Tubers (5 medium)",
+          "price": 6500,
+          "description": "Five medium white yam tubers, good for boiling, frying or pounding."
+        },
+        {
+          "slug": "eggs",
+          "name": "Farm Eggs (crate of 30)",
+          "price": 4800,
+          "old_price": 5500,
+          "description": "A crate of 30 fresh eggs from local poultry farms."
+        },
+        {
+          "slug": "pepper",
+          "name": "Fresh Pepper (small basin)",
+          "price": 2500,
+          "description": "Mixed tatashe and rodo, ready for stews and sauces."
+        }
+      ],
+      "lat": 7.7861,
+      "lng": 4.4795,
+      "address": "Ido-Osun area (demo pin)"
+    },
+    {
+      "slug": "mama-bisi",
+      "name": "Mama Bisi Kitchen",
+      "category": "Food",
+      "location": "Osogbo",
       "description": "Home-style Nigerian meals and snacks. Order a day ahead for events.",
       "products": [
-        { "slug": "jollof-chicken", "name": "Jollof Rice and Chicken", "price": 3500, "description": "A hot plate of party jollof rice with a piece of fried chicken." },
-        { "slug": "party-pack", "name": "Jollof Party Pack (10 persons)", "price": 30000, "old_price": 35000, "description": "Jollof rice with chicken for ten people. Please order one day ahead." },
-        { "slug": "puff-puff", "name": "Puff-puff Box (20 pieces)", "price": 2000, "description": "Soft, freshly fried puff-puff in a take-away box." }
-      ] },
-    { "slug": "osun-prints", "name": "Osun Prints & Styles", "category": "Fashion", "location": "Ido-Osun",
+        {
+          "slug": "jollof-chicken",
+          "name": "Jollof Rice and Chicken",
+          "price": 3500,
+          "description": "A hot plate of party jollof rice with a piece of fried chicken."
+        },
+        {
+          "slug": "party-pack",
+          "name": "Jollof Party Pack (10 persons)",
+          "price": 30000,
+          "old_price": 35000,
+          "description": "Jollof rice with chicken for ten people. Please order one day ahead."
+        },
+        {
+          "slug": "puff-puff",
+          "name": "Puff-puff Box (20 pieces)",
+          "price": 2000,
+          "description": "Soft, freshly fried puff-puff in a take-away box."
+        }
+      ],
+      "lat": 7.779,
+      "lng": 4.544,
+      "address": "Osogbo (demo pin)"
+    },
+    {
+      "slug": "osun-prints",
+      "name": "Osun Prints & Styles",
+      "category": "Fashion",
+      "location": "Ido-Osun",
       "description": "Ankara fabrics, ready-made outfits and bags from local tailors.",
       "products": [
-        { "slug": "ankara-fabric", "name": "Ankara Fabric (6 yards)", "price": 9500, "old_price": 12000, "description": "Six yards of bright Ankara print, enough for a full outfit." },
-        { "slug": "ankara-shirt", "name": "Ready-made Ankara Shirt", "price": 12000, "description": "A tailored Ankara shirt. Message the vendor to confirm your size." },
-        { "slug": "tote-bag", "name": "Canvas Tote Bag", "price": 4500, "description": "A strong everyday tote bag for the market, school or work." }
-      ] },
-    { "slug": "kunle-tech", "name": "Kunle Tech Corner", "category": "Electronics", "location": "Osogbo",
+        {
+          "slug": "ankara-fabric",
+          "name": "Ankara Fabric (6 yards)",
+          "price": 9500,
+          "old_price": 12000,
+          "description": "Six yards of bright Ankara print, enough for a full outfit."
+        },
+        {
+          "slug": "ankara-shirt",
+          "name": "Ready-made Ankara Shirt",
+          "price": 12000,
+          "description": "A tailored Ankara shirt. Message the vendor to confirm your size."
+        },
+        {
+          "slug": "tote-bag",
+          "name": "Canvas Tote Bag",
+          "price": 4500,
+          "description": "A strong everyday tote bag for the market, school or work."
+        }
+      ],
+      "lat": 7.7805,
+      "lng": 4.4872,
+      "address": "Ido-Osun area (demo pin)"
+    },
+    {
+      "slug": "kunle-tech",
+      "name": "Kunle Tech Corner",
+      "category": "Electronics",
+      "location": "Osogbo",
       "description": "Phone accessories and small electronics at fair prices.",
       "products": [
-        { "slug": "power-bank", "name": "Power Bank 20,000mAh", "price": 14500, "old_price": 18000, "description": "A high-capacity power bank that charges a phone several times over." },
-        { "slug": "earbuds", "name": "Wireless Earbuds", "price": 9800, "description": "Bluetooth earbuds with a charging case." },
-        { "slug": "charger-cable", "name": "Fast Charger Cable (2 pack)", "price": 3000, "description": "Two durable charging cables for your phone." }
-      ] },
-    { "slug": "ola-home", "name": "Ola Home Essentials", "category": "Home & Kitchen", "location": "Ede",
+        {
+          "slug": "power-bank",
+          "name": "Power Bank 20,000mAh",
+          "price": 14500,
+          "old_price": 18000,
+          "description": "A high-capacity power bank that charges a phone several times over."
+        },
+        {
+          "slug": "earbuds",
+          "name": "Wireless Earbuds",
+          "price": 9800,
+          "description": "Bluetooth earbuds with a charging case."
+        },
+        {
+          "slug": "charger-cable",
+          "name": "Fast Charger Cable (2 pack)",
+          "price": 3000,
+          "description": "Two durable charging cables for your phone."
+        }
+      ],
+      "lat": 7.7855,
+      "lng": 4.538,
+      "address": "Osogbo (demo pin)"
+    },
+    {
+      "slug": "ola-home",
+      "name": "Ola Home Essentials",
+      "category": "Home & Kitchen",
+      "location": "Ede",
       "description": "Kitchenware and household items for everyday living.",
       "products": [
-        { "slug": "pot-set", "name": "Non-stick Pot Set (3 pieces)", "price": 18500, "old_price": 22000, "description": "Three non-stick pots with lids in different sizes." },
-        { "slug": "kettle", "name": "Electric Kettle (1.7L)", "price": 8500, "description": "Boils water fast, with automatic switch-off." },
-        { "slug": "bedsheet", "name": "Cotton Bedsheet Set", "price": 11000, "description": "A soft cotton bedsheet with two pillowcases." }
-      ] },
-    { "slug": "shea-glow", "name": "Shea and Glow", "category": "Beauty & Care", "location": "Ikirun",
+        {
+          "slug": "pot-set",
+          "name": "Non-stick Pot Set (3 pieces)",
+          "price": 18500,
+          "old_price": 22000,
+          "description": "Three non-stick pots with lids in different sizes."
+        },
+        {
+          "slug": "kettle",
+          "name": "Electric Kettle (1.7L)",
+          "price": 8500,
+          "description": "Boils water fast, with automatic switch-off."
+        },
+        {
+          "slug": "bedsheet",
+          "name": "Cotton Bedsheet Set",
+          "price": 11000,
+          "description": "A soft cotton bedsheet with two pillowcases."
+        }
+      ],
+      "lat": 7.7345,
+      "lng": 4.43,
+      "address": "Ede (demo pin)"
+    },
+    {
+      "slug": "shea-glow",
+      "name": "Shea and Glow",
+      "category": "Beauty & Care",
+      "location": "Ikirun",
       "description": "Natural skin and hair care made in small batches.",
       "products": [
-        { "slug": "shea-butter", "name": "Raw Shea Butter (500g)", "price": 3200, "description": "Unrefined shea butter for skin and hair." },
-        { "slug": "black-soap", "name": "African Black Soap (pack of 4)", "price": 2500, "old_price": 3000, "description": "Four bars of traditional black soap." },
-        { "slug": "hair-oil", "name": "Natural Hair Oil (200ml)", "price": 3800, "description": "A blend of natural oils for dry hair and scalp." }
-      ] },
-    { "slug": "bead-studio", "name": "Bead Studio", "category": "Beads & Crafts", "location": "Ido-Osun",
+        {
+          "slug": "shea-butter",
+          "name": "Raw Shea Butter (500g)",
+          "price": 3200,
+          "description": "Unrefined shea butter for skin and hair."
+        },
+        {
+          "slug": "black-soap",
+          "name": "African Black Soap (pack of 4)",
+          "price": 2500,
+          "old_price": 3000,
+          "description": "Four bars of traditional black soap."
+        },
+        {
+          "slug": "hair-oil",
+          "name": "Natural Hair Oil (200ml)",
+          "price": 3800,
+          "description": "A blend of natural oils for dry hair and scalp."
+        }
+      ],
+      "lat": 7.915,
+      "lng": 4.665,
+      "address": "Ikirun (demo pin)"
+    },
+    {
+      "slug": "bead-studio",
+      "name": "Bead Studio",
+      "category": "Beads & Crafts",
+      "location": "Ido-Osun",
       "description": "Handmade beads and crafts for gifts and special occasions.",
       "products": [
-        { "slug": "beaded-necklace", "name": "Beaded Necklace", "price": 4000, "description": "A handmade beaded necklace in your choice of colours." },
-        { "slug": "waist-beads", "name": "Waist Beads", "price": 2500, "description": "Traditional waist beads, made to your size." },
-        { "slug": "bracelet-set", "name": "Beaded Bracelet Set (3)", "price": 3000, "description": "A set of three matching beaded bracelets." }
-      ] },
-    { "slug": "ido-preowned", "name": "Ido Pre-owned Mart", "category": "Pre-owned", "location": "Osogbo",
+        {
+          "slug": "beaded-necklace",
+          "name": "Beaded Necklace",
+          "price": 4000,
+          "description": "A handmade beaded necklace in your choice of colours."
+        },
+        {
+          "slug": "waist-beads",
+          "name": "Waist Beads",
+          "price": 2500,
+          "description": "Traditional waist beads, made to your size."
+        },
+        {
+          "slug": "bracelet-set",
+          "name": "Beaded Bracelet Set (3)",
+          "price": 3000,
+          "description": "A set of three matching beaded bracelets."
+        }
+      ],
+      "lat": 7.7772,
+      "lng": 4.479,
+      "address": "Ido-Osun area (demo pin)"
+    },
+    {
+      "slug": "ido-preowned",
+      "name": "Ido Pre-owned Mart",
+      "category": "Pre-owned",
+      "location": "Osogbo",
       "description": "Tested second-hand furniture and appliances at fair prices.",
       "products": [
-        { "slug": "table-fan", "name": "Table Fan (tested)", "price": 15000, "description": "A working table fan with three speed settings." },
-        { "slug": "study-desk", "name": "Study Desk", "price": 20000, "old_price": 25000, "description": "A solid wooden desk in good condition." },
-        { "slug": "bookshelf", "name": "Wooden Bookshelf (4-tier)", "price": 18000, "description": "A four-tier bookshelf with light wear." }
-      ] },
-    { "slug": "ido-tech-hub", "name": "Ido Tech Hub", "category": "Services", "location": "Ido-Osun",
+        {
+          "slug": "table-fan",
+          "name": "Table Fan (tested)",
+          "price": 15000,
+          "description": "A working table fan with three speed settings."
+        },
+        {
+          "slug": "study-desk",
+          "name": "Study Desk",
+          "price": 20000,
+          "old_price": 25000,
+          "description": "A solid wooden desk in good condition."
+        },
+        {
+          "slug": "bookshelf",
+          "name": "Wooden Bookshelf (4-tier)",
+          "price": 18000,
+          "description": "A four-tier bookshelf with light wear."
+        }
+      ],
+      "lat": 7.77,
+      "lng": 4.55,
+      "address": "Osogbo (demo pin)"
+    },
+    {
+      "slug": "ido-tech-hub",
+      "name": "Ido Tech Hub",
+      "category": "Services",
+      "location": "Ido-Osun",
       "description": "Phone repairs, device setup and simple websites for small businesses.",
       "products": [
-        { "slug": "screen-repair", "name": "Phone Screen Repair (booking)", "price": 8000, "description": "Book a screen replacement. The vendor confirms your phone model." },
-        { "slug": "device-setup", "name": "Phone and Laptop Setup", "price": 3000, "description": "Software setup, data transfer and basic security." },
-        { "slug": "website", "name": "Simple Business Website", "price": 45000, "old_price": 60000, "description": "A simple mobile-friendly website for your business." }
-      ] }
+        {
+          "slug": "screen-repair",
+          "name": "Phone Screen Repair (booking)",
+          "price": 8000,
+          "description": "Book a screen replacement. The vendor confirms your phone model."
+        },
+        {
+          "slug": "device-setup",
+          "name": "Phone and Laptop Setup",
+          "price": 3000,
+          "description": "Software setup, data transfer and basic security."
+        },
+        {
+          "slug": "website",
+          "name": "Simple Business Website",
+          "price": 45000,
+          "old_price": 60000,
+          "description": "A simple mobile-friendly website for your business."
+        }
+      ],
+      "lat": 7.784,
+      "lng": 4.4835,
+      "address": "Ido-Osun area (demo pin)"
+    }
   ]
 }

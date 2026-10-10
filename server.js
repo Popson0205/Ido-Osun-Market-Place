@@ -47,6 +47,16 @@ const sign = (u, remember = true) => jwt.sign({ id: u.id, role: u.role }, JWT_SE
 const bad = (res, msg, code = 400) => res.status(code).json({ error: msg });
 const ngn = n => '₦' + n.toLocaleString('en-NG');
 const money = v => { const n = Number(v); return Number.isInteger(n) && n >= 0 && n <= 100000000 ? n : null; };
+// Shop locations must be real coordinates inside Nigeria (stops typos and pins on the wrong side of the world).
+const NG = { lat: [4.0, 14.0], lng: [2.6, 14.8] };
+const geo = (lat, lng) => {
+  const num = x => (typeof x === 'number' || (typeof x === 'string' && x.trim() !== '')) ? Number(x) : NaN;
+  const a = num(lat), o = num(lng);
+  if (!Number.isFinite(a) || !Number.isFinite(o) || a < NG.lat[0] || a > NG.lat[1] || o < NG.lng[0] || o > NG.lng[1]) return null;
+  return { lat: Math.round(a * 1e6) / 1e6, lng: Math.round(o * 1e6) / 1e6 };
+};
+// Buyers only ever see a pin when the vendor chose to show it; admins always see it.
+const PUB = `CASE WHEN location_public THEN lat END AS lat, CASE WHEN location_public THEN lng END AS lng, CASE WHEN location_public THEN address END AS address`;
 const need = (...roles) => (req, res, next) => {
   try { req.user = jwt.verify((req.headers.authorization || '').slice(7), JWT_SECRET); }
   catch { return bad(res, 'Please log in', 401); }
@@ -62,6 +72,8 @@ app.post('/api/auth/register', authLimit, ah(async (req, res) => {
   const wa = v ? String(v.whatsapp || '').replace(/\D/g, '') : '';
   if (v && (!String(v.shop || '').trim() || wa.length < 10 || wa.length > 15))
     return bad(res, 'Shop name and a valid WhatsApp number (e.g. 2348012345678) are required.');
+  const g = v ? geo(v.lat, v.lng) : null;
+  if (v && !g) return bad(res, 'Mark your shop location on the map (it must be inside Nigeria).');
   const role = email === ADMIN_EMAIL.trim().toLowerCase() ? 'admin' : v ? 'vendor' : 'buyer';
   const hash = await bcrypt.hash(String(b.password), 11);
   const c = await db.connect();
@@ -71,8 +83,9 @@ app.post('/api/auth/register', authLimit, ah(async (req, res) => {
       'INSERT INTO users(first,last,email,password_hash,role,referral) VALUES($1,$2,$3,$4,$5,$6) RETURNING id,first,role',
       [String(b.first).trim().slice(0, 60), String(b.last).trim().slice(0, 60), email, hash, role, String(b.referral || '').slice(0, 40)])).rows[0];
     if (v) await c.query(
-      'INSERT INTO stores(owner_id,name,description,category,location,whatsapp) VALUES($1,$2,$3,$4,$5,$6)',
-      [u.id, String(v.shop).trim().slice(0, 80), '', String(v.category || 'General').slice(0, 40), String(v.location || '').slice(0, 80), wa]);
+      'INSERT INTO stores(owner_id,name,description,category,location,whatsapp,lat,lng,address,location_public) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',
+      [u.id, String(v.shop).trim().slice(0, 80), '', String(v.category || 'General').slice(0, 40), String(v.location || '').slice(0, 80), wa,
+       g.lat, g.lng, String(v.address || '').trim().slice(0, 160), v.location_public !== false]);
     await c.query('COMMIT');
     if (!v) mailer.send({ to: email, ...mailer.tpl.welcome(u.first, link('/')) });   // confirmation email for buyers (and the admin)
     if (v) {   // emails never block sign-up
@@ -148,15 +161,18 @@ app.post('/api/admin/email/test', need('admin'), ah(async (req, res) => {
 /* ---------- public catalogue ---------- */
 app.get('/api/stores', ah(async (req, res) => {
   const q = '%' + String(req.query.q || '').toLowerCase() + '%', cat = String(req.query.cat || '');
+  // ?near=lat,lng adds distance_km and sorts nearest first. Stores with a hidden pin never get a distance (it would reveal the pin).
+  const n = String(req.query.near || '').split(',').map(x => (x.trim() === '' ? NaN : Number(x))), near = n.length === 2 && n.every(Number.isFinite) && Math.abs(n[0]) <= 90 && Math.abs(n[1]) <= 180;
+  const dist = `round((CASE WHEN location_public AND lat IS NOT NULL THEN 2*6371*asin(sqrt(power(sin(radians(lat-$3)/2),2)+cos(radians($3))*cos(radians(lat))*power(sin(radians(lng-$4)/2),2))) END)::numeric,1)::float`;
   res.json((await db.query(
-    `SELECT id,name,description,category,location,(image IS NOT NULL) AS img,image_v FROM stores
+    `SELECT id,name,description,category,location,${PUB},(image IS NOT NULL) AS img,image_v,${near ? dist : 'NULL::float'} AS distance_km FROM stores
      WHERE status='approved' AND ($1='' OR category=$1)
      AND lower(name||' '||coalesce(description,'')||' '||category||' '||coalesce(location,'')) LIKE $2
-     ORDER BY id DESC LIMIT 200`, [cat, q])).rows);
+     ORDER BY ${near ? 'distance_km ASC NULLS LAST, id DESC' : 'id DESC'} LIMIT 200`, near ? [cat, q, n[0], n[1]] : [cat, q])).rows);
 }));
 
 app.get('/api/stores/:id', ah(async (req, res) => {
-  const s = (await db.query("SELECT id,name,description,category,location,whatsapp,(image IS NOT NULL) AS img,image_v FROM stores WHERE id=$1 AND status='approved'", [req.params.id])).rows[0];
+  const s = (await db.query(`SELECT id,name,description,category,location,whatsapp,${PUB},(image IS NOT NULL) AS img,image_v FROM stores WHERE id=$1 AND status='approved'`, [req.params.id])).rows[0];
   if (!s) return bad(res, 'Store not found', 404);
   s.products = (await db.query('SELECT id,name,price,old_price,(image IS NOT NULL) AS img,image_v FROM products WHERE store_id=$1 AND active AND (stock IS NULL OR stock>0) ORDER BY id DESC', [s.id])).rows;
   res.json(s);
@@ -256,7 +272,7 @@ app.post('/api/orders', orderLimit, ah(async (req, res) => {
 const mine = `(SELECT id FROM stores WHERE owner_id=$1)`;
 const pieces = v => { const n = Number(v); return v !== '' && v !== null && v !== undefined && Number.isInteger(n) && n >= 0 && n <= 1000000 ? n : null; };
 app.get('/api/vendor/store', need('vendor'), ah(async (req, res) => {
-  const s = (await db.query('SELECT id,name,description,category,location,whatsapp,status,(image IS NOT NULL) AS img,image_v FROM stores WHERE owner_id=$1', [req.user.id])).rows[0];
+  const s = (await db.query('SELECT id,name,description,category,location,whatsapp,status,lat,lng,address,location_public,(image IS NOT NULL) AS img,image_v FROM stores WHERE owner_id=$1', [req.user.id])).rows[0];
   if (!s) return bad(res, 'No store found', 404);
   s.products = (await db.query('SELECT id,name,price,old_price,description,active,stock,(image IS NOT NULL) AS img,image_v FROM products WHERE store_id=$1 ORDER BY id', [s.id])).rows;
   res.json(s);
@@ -265,8 +281,11 @@ app.get('/api/vendor/store', need('vendor'), ah(async (req, res) => {
 app.put('/api/vendor/store', need('vendor'), ah(async (req, res) => {
   const b = req.body, wa = String(b.whatsapp || '').replace(/\D/g, '');
   if (!String(b.name || '').trim() || wa.length < 10 || wa.length > 15) return bad(res, 'Shop name and a valid WhatsApp number are required.');
-  await db.query('UPDATE stores SET name=$2,description=$3,category=$4,location=$5,whatsapp=$6 WHERE owner_id=$1',
-    [req.user.id, String(b.name).trim().slice(0, 80), String(b.description || '').slice(0, 500), String(b.category || 'General').slice(0, 40), String(b.location || '').slice(0, 80), wa]);
+  const hasGeo = b.lat !== undefined || b.lng !== undefined, g = hasGeo ? geo(b.lat, b.lng) : null;
+  if (hasGeo && !g) return bad(res, 'Mark your shop location on the map (it must be inside Nigeria).');
+  await db.query('UPDATE stores SET name=$2,description=$3,category=$4,location=$5,whatsapp=$6,lat=COALESCE($7,lat),lng=COALESCE($8,lng),address=COALESCE($9,address),location_public=COALESCE($10,location_public) WHERE owner_id=$1',
+    [req.user.id, String(b.name).trim().slice(0, 80), String(b.description || '').slice(0, 500), String(b.category || 'General').slice(0, 40), String(b.location || '').slice(0, 80), wa,
+     g ? g.lat : null, g ? g.lng : null, b.address === undefined ? null : String(b.address).trim().slice(0, 160), typeof b.location_public === 'boolean' ? b.location_public : null]);
   res.json({ ok: true });
 }));
 
@@ -343,8 +362,17 @@ app.get('/img/:kind/:id', ah(async (req, res) => {
 
 /* ---------- admin ---------- */
 app.get('/api/admin/stores', need('admin'), ah(async (req, res) => {
-  res.json((await db.query(`SELECT s.id,s.name,s.category,s.location,s.whatsapp,s.status,u.email
+  res.json((await db.query(`SELECT s.id,s.name,s.category,s.location,s.address,s.whatsapp,s.status,s.lat,s.lng,s.location_public,s.created_at,
+      u.email,u.first||' '||u.last AS owner,(SELECT count(*)::int FROM products p WHERE p.store_id=s.id) AS products
     FROM stores s JOIN users u ON u.id=s.owner_id ORDER BY (s.status='pending') DESC, s.id DESC`)).rows);
+}));
+
+// All vendor locations as GeoJSON (WGS84), ready for QGIS, ArcGIS or any web map.
+app.get('/api/admin/stores.geojson', need('admin'), ah(async (req, res) => {
+  const rows = (await db.query(`SELECT s.id,s.name,s.category,s.location,s.address,s.whatsapp,s.status,s.lat,s.lng,s.location_public,s.created_at,
+      u.email,u.first||' '||u.last AS owner FROM stores s JOIN users u ON u.id=s.owner_id WHERE s.lat IS NOT NULL ORDER BY s.id`)).rows;
+  res.set({ 'Content-Type': 'application/geo+json', 'Content-Disposition': 'attachment; filename="ido-osun-market-vendors.geojson"' });
+  res.send(JSON.stringify({ type: 'FeatureCollection', features: rows.map(({ lat, lng, ...p }) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [lng, lat] }, properties: p })) }));
 }));
 
 app.post('/api/admin/stores/:id/:action', need('admin'), ah(async (req, res) => {

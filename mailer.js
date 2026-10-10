@@ -7,6 +7,16 @@ const enabled = !!(BREVO_API_KEY && MAIL_FROM);
 
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+// Turns Brevo's error into something the owner can act on.
+function hint(status, msg) {
+  const m = String(msg || '');
+  if (/unrecognised IP|authorised_ips|authorized.?ip/i.test(m))
+    return 'Brevo blocked this server\'s IP address. In Brevo go to Security > Authorised IPs and deactivate IP blocking, then try again. (' + m.slice(0, 120) + ')';
+  if (status === 401) return 'Brevo rejected the API key. Check BREVO_API_KEY on your host: it must be an API key (starts with xkeysib-), not an SMTP key. (' + m + ')';
+  if (/sender/i.test(m)) return 'Brevo does not accept the sender address ' + MAIL_FROM + '. Add it under Senders in Brevo, open the verification email Brevo sends to it, and make MAIL_FROM match exactly. (' + m + ')';
+  return (m || 'HTTP ' + status) + ' (HTTP ' + status + ')';
+}
+
 async function send({ to, subject, text, html }) {
   if (!enabled) return { ok: false, error: 'Email is not set up' };
   if (!to || /@demo\.idoosun\.local$/i.test(to)) return { ok: false, error: 'No recipient' };   // never email demo accounts
@@ -20,7 +30,7 @@ async function send({ to, subject, text, html }) {
     if (r.ok) return { ok: true };
     let msg = ''; try { msg = (await r.json()).message || ''; } catch {}
     console.error('email failed', r.status, msg);
-    return { ok: false, error: msg || 'HTTP ' + r.status };
+    return { ok: false, error: hint(r.status, msg) };
   } catch (e) { console.error('email failed', e.message); return { ok: false, error: e.message }; }
 }
 
@@ -39,6 +49,9 @@ const tpl = {
     text: `You have a new order:\n\n${text}\n\nConfirm availability, price and delivery with the buyer on WhatsApp.` + (url ? `\n\nOpen your dashboard: ${url}` : ''),
     html: shell('You have a new order', `<pre style="white-space:pre-wrap;font-family:inherit;background:#f3f6f1;padding:12px;border-radius:10px;margin:0 0 12px">${esc(text)}</pre>${p('Confirm availability, price and delivery with the buyer on WhatsApp.')}`, url ? ['Open dashboard', url] : null),
   }),
+  welcome: (first, url) => mk('Welcome to Ido-Osun Market', [
+    `Hi ${first}, your account has been created. Thank you for joining Ido-Osun Market.`,
+    'You can now browse local stores, add products to your cart and order straight on WhatsApp. If you did not create this account, please ignore this email or contact us.'], ['Start shopping', url]),
   welcomeVendor: (shop, url) => mk('Welcome to Ido-Osun Market', [
     `Thank you for registering ${shop}.`,
     'Your store is waiting for approval and will appear publicly once approved. Meanwhile, you can add your products, photos and prices from your dashboard.'], ['Open dashboard', url]),
@@ -55,4 +68,4 @@ const tpl = {
   test: () => mk('Test email from Ido-Osun Market', ['Brevo email is working. Order alerts, store approvals and password resets will be sent from this address.']),
 };
 
-module.exports = { enabled, send, tpl };
+module.exports = { enabled, send, tpl, from: MAIL_FROM || '' };

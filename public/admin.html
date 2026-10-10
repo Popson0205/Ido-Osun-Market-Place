@@ -91,7 +91,7 @@ label{display:block;font-size:13px;color:var(--mut);margin:12px 0 4px}
     </section>
     <section id="t-reports" class="hide"><div id="reports"></div></section>
     <section id="t-tools" class="hide">
-      <div class="card"><h3 style="margin-top:0">Email (Brevo)</h3><p class="m" id="em-s"></p><div class="bar"><button class="sm" id="em-t">Send me a test email</button></div></div>
+      <div class="card"><h3 style="margin-top:0">Email (Brevo)</h3><p class="m" id="em-s"></p><div class="bar"><button class="sm" id="em-t">Send me a test email</button></div><p class="m" id="em-o" style="margin-top:10px;white-space:pre-wrap"></p></div>
       <div class="card"><h3 style="margin-top:0">Demo data</h3><p class="m" id="dm-s"></p>
         <div class="bar"><button class="sm" id="dm-l"></button><button class="sm d hide" id="dm-c">Remove demo data</button></div>
         <p class="m" id="dm-o" style="margin-top:10px"></p></div>
@@ -204,13 +204,13 @@ $("reports").onclick=async function(e){
 /* ---- tools ---- */
 async function loadTools(){
   var em=await api("/admin/email"),dm=await api("/admin/demo");
-  $("em-s").textContent=em.enabled?("Connected."+(em.appUrl?"":" Also set APP_URL so emails link back to the site and password reset works.")):"Not set up. Add BREVO_API_KEY and MAIL_FROM on your host.";
+  $("em-s").textContent=em.enabled?("Sender: "+em.from+". "+(em.appUrl?"":" Also set APP_URL so emails link back to the site and password reset works.")):"Not set up. Add BREVO_API_KEY and MAIL_FROM on your host.";
   $("em-t").classList.toggle("hide",!em.enabled);
   $("dm-s").textContent=(dm.stores?dm.stores+" demo stores are loaded. ":"No demo data loaded. ")+"Sample vendors and products for presentations. Remove it before opening to the public.";
   $("dm-l").textContent=(dm.stores?"Reload":"Load")+" demo products";
   $("dm-c").classList.toggle("hide",!dm.stores);
 }
-$("em-t").onclick=async function(){this.disabled=true;try{var r=await api("/admin/email/test",{m:"POST"});toast("Test email sent to "+r.to)}catch(x){toast(x.message)}this.disabled=false};
+$("em-t").onclick=async function(){this.disabled=true;var o=$("em-o");o.style.color="";o.textContent="Sending…";try{var r=await api("/admin/email/test",{m:"POST"});o.style.color="var(--ok)";o.textContent="Sent to "+r.to+". Check your inbox and spam folder."}catch(x){o.style.color="var(--bad)";o.textContent=x.message}this.disabled=false};
 $("dm-l").onclick=async function(){
   var w=prompt("WhatsApp number that should receive demo orders (international format, no +)");if(!w)return;
   this.disabled=true;

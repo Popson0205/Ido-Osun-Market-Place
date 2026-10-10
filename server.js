@@ -74,6 +74,7 @@ app.post('/api/auth/register', authLimit, ah(async (req, res) => {
       'INSERT INTO stores(owner_id,name,description,category,location,whatsapp) VALUES($1,$2,$3,$4,$5,$6)',
       [u.id, String(v.shop).trim().slice(0, 80), '', String(v.category || 'General').slice(0, 40), String(v.location || '').slice(0, 80), wa]);
     await c.query('COMMIT');
+    if (!v) mailer.send({ to: email, ...mailer.tpl.welcome(u.first, link('/')) });   // confirmation email for buyers (and the admin)
     if (v) {   // emails never block sign-up
       mailer.send({ to: email, ...mailer.tpl.welcomeVendor(String(v.shop).trim(), link('/#/dash')) });
       if (ADMIN_EMAIL) mailer.send({ to: ADMIN_EMAIL, ...mailer.tpl.adminNewVendor(String(v.shop).trim(), `${b.first} ${b.last}`, email, wa, link('/admin')) });
@@ -136,7 +137,7 @@ app.post('/api/auth/reset', authLimit, ah(async (req, res) => {
   res.json({ ok: true });
 }));
 
-app.get('/api/admin/email', need('admin'), (req, res) => res.json({ enabled: mailer.enabled, appUrl: !!APP_URL }));
+app.get('/api/admin/email', need('admin'), (req, res) => res.json({ enabled: mailer.enabled, appUrl: !!APP_URL, from: mailer.from }));
 app.post('/api/admin/email/test', need('admin'), ah(async (req, res) => {
   if (!mailer.enabled) return bad(res, 'Email is not set up yet. Add BREVO_API_KEY and MAIL_FROM on your host.');
   const u = (await db.query('SELECT email FROM users WHERE id=$1', [req.user.id])).rows[0];

@@ -74,6 +74,9 @@ input,select,textarea{width:100%;border:0;background:var(--inp);color:var(--ink)
 footer{background:#1d2b24;color:#e9f1ec;padding:20px;text-align:center;font-size:.85rem}footer a{color:#e9f1ec;margin:0 8px;display:inline-block;padding:4px 0;text-decoration:none}
 .card ul{padding-left:20px;margin:6px 0}.card li{margin:4px 0}
 .hide{display:none}#msg{color:var(--g);font-size:.9rem;margin:8px 0 0}
+#ob{background:#f2a03d;color:#1d2b24;text-align:center;font-size:.85rem;padding:6px 12px}
+.card ol{padding-left:22px;margin:6px 0}.card ol li{margin:8px 0}
+@media (min-width:900px){.ist{display:none}}
 @media (min-width:700px){.tr span{display:block}.cs a{flex:0 0 90px;font-size:.8rem}.hs>*{flex:0 0 190px}.sgrid{grid-template-columns:repeat(4,1fr)}.cgrid{grid-template-columns:repeat(5,1fr)}}
 @media (min-width:900px){.top{flex-wrap:nowrap;padding-left:max(14px,calc((100% - 1100px)/2 + 12px));padding-right:max(14px,calc((100% - 1100px)/2 + 12px))}.sf{order:0;flex:1 1 auto;max-width:560px}.brand{margin-right:0}.top .ic:first-of-type{margin-left:auto}
 .grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}.pd{grid-template-columns:420px 1fr}.bn{display:none}body{padding-bottom:0}#toast{bottom:24px}.bnr>div{min-height:220px;padding:44px}.bnr h2{font-size:2.1rem}}
@@ -87,10 +90,11 @@ footer{background:#1d2b24;color:#e9f1ec;padding:20px;text-align:center;font-size
   <a class="ic" href="#/cart" id="bc" title="Cart">🛒<b id="cn" style="display:none">0</b></a>
   <a class="ic" href="#/me" id="ba" title="Account">👤<b id="ab" style="display:none">0</b></a>
 </header>
+<div id="ob" class="hide">📴 You are offline. Showing saved items, prices may be out of date.</div>
 <main id="app"></main>
 <input type="file" id="pf" accept="image/*" hidden>
 <div id="toast"></div>
-<footer><a href="#/about">About us</a><a href="#/safety">Safety tips</a><a href="#/faq">FAQ</a><a href="#/terms">Terms of service</a><a href="#/privacy">Privacy policy</a><a href="#/contact">Contact us</a><a id="fwa" href="#/contact" target="_blank" rel="noopener" class="hide">WhatsApp</a><a href="#" id="inst" class="hide">Install app</a><div style="margin-top:10px">© 2026 Ido-Osun Market · Launching with the Ido-Osun Digital Summit</div></footer>
+<footer><a href="#/about">About us</a><a href="#/safety">Safety tips</a><a href="#/faq">FAQ</a><a href="#/terms">Terms of service</a><a href="#/privacy">Privacy policy</a><a href="#/contact">Contact us</a><a href="#/install">Install guide</a><a id="fwa" href="#/contact" target="_blank" rel="noopener" class="hide">WhatsApp</a><a href="#" id="inst" class="hide">Install app</a><div style="margin-top:10px">© 2026 Ido-Osun Market · Launching with the Ido-Osun Digital Summit</div></footer>
 <nav class="bn"><a href="#/" data-n="home">🏠<span>Home</span></a><a href="#/cats" data-n="cats">☰<span>Categories</span></a><a href="#/cart" data-n="cart">🛒<span>Cart</span><b id="cn2" style="display:none">0</b></a><a href="#/me" data-n="me">👤<span>Account</span></a></nav>
 <script>
 const CATS=[["Fresh Produce","🥬"],["Food","🍛"],["Fashion","👗"],["Electronics","📱"],["Home & Kitchen","🏠"],["Beauty & Care","💄"],["Beads & Crafts","📿"],["Pre-owned","♻️"],["Services","🔧"],["General","🛍️"]];
@@ -104,7 +108,7 @@ const ngn=x=>"₦"+Number(x).toLocaleString("en-NG");
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const opts=sel=>CATS.map(([c])=>`<option${c===sel?" selected":""}>${esc(c)}</option>`).join("");
 async function api(p,o){o=o||{};const h={"Content-Type":"application/json"};if(tok)h.Authorization="Bearer "+tok;
-  const r=await fetch("/api"+p,{method:o.m||"GET",headers:h,body:o.b?JSON.stringify(o.b):undefined});
+  let r;try{r=await fetch("/api"+p,{method:o.m||"GET",headers:h,body:o.b?JSON.stringify(o.b):undefined})}catch(e){throw new Error(navigator.onLine===false?"You are offline. Check your connection and try again.":"Could not reach the server. Please try again.")}
   const d=await r.json().catch(()=>({}));
   if(r.status===401&&tok){tok=null;user=null;sv("t");sv("u")}
   if(!r.ok)throw new Error(d.error||"Something went wrong");return d}
@@ -128,10 +132,15 @@ const trust=()=>`<div class="tr"><div>📲<b>Order on WhatsApp</b><span>Chat and
 const cats=()=>`<div class="cs">${CATS.map(([c,e])=>`<a href="#/shop/${encodeURIComponent(c)}"><i>${e}</i>${esc(c)}</a>`).join("")}</div>`;
 const autoBanner=()=>{clearInterval(bi);if(!$("bnr"))return;bi=setInterval(()=>{const x=$("bnr");if(!x){clearInterval(bi);return}const w=x.clientWidth,n=Math.round(x.scrollLeft/w);x.scrollTo({left:((n+1)%x.children.length)*w,behavior:"smooth"})},5000)};
 
+const standalone=()=>matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
+const installStrip=()=>standalone()||ls("hi")?"":`<div class="card ist" style="display:flex;align-items:center;gap:10px;padding:10px 14px"><span style="font-size:1.5rem">📲</span><div style="flex:1;font-size:.9rem"><b>Get the app</b><br><span class="m">Install for faster shopping.</span></div><a class="btn sm" href="#/install" style="margin:0">Install</a><button class="back" data-hi="1" aria-label="Dismiss">✕</button></div>`;
+const rv=p=>{const l=(ls("rv")||[]).filter(x=>x.id!==p.id);l.unshift({id:p.id,name:p.name,price:p.price,old_price:p.old_price,img:p.img,image_v:p.image_v,store_id:p.store_id,store_name:p.store_name,category:p.category});sv("rv",l.slice(0,10))};
+const rvRow=()=>{const l=ls("rv")||[];return l.length?`<div class="sh"><h2>Recently viewed</h2></div><div class="hs">${l.map(card).join("")}</div>`:""};
+
 /* ---------- storefront views ---------- */
 V.home=async()=>{
   const [nw,dl,st]=await Promise.all([api("/products?sort=new&limit=12"),api("/products?deals=1&limit=10"),api("/stores")]);
-  return banner()+trust()+cats()+
+  return installStrip()+banner()+trust()+cats()+rvRow()+
   (dl.length?`<div class="sh"><h2>🔥 Deals</h2><a href="#/shop/deals">See all</a></div><div class="hs">${dl.map(card).join("")}</div>`:"")+
   (nw.length?`<div class="sh"><h2>Just in</h2><a href="#/shop">See all</a></div><div class="grid">${nw.map(card).join("")}</div>`:"")+
   (st.length?`<div class="sh"><h2>Local stores</h2><a href="#/stores">See all</a></div><div class="hs">${st.slice(0,10).map(scard).join("")}</div>`:"")+
@@ -145,8 +154,10 @@ const shopPage=async()=>{const r=await fetchP(0),title=SH.q?`Results for “${es
 V.shop=async a=>{SH.cat=a?decodeURIComponent(a):"All";SH.q="";return shopPage()};
 V.search=async a=>{SH.q=decodeURIComponent(a||"");SH.cat="All";return shopPage()};
 V.cats=async()=>`<div class="sh"><h1>Categories</h1></div><div class="cgrid">${CATS.map(([c,e])=>`<a class="ct card" href="#/shop/${encodeURIComponent(c)}"><i>${e}</i>${esc(c)}</a>`).join("")}</div>`;
+V.install=async()=>{const u=location.origin+"/#/install";
+  return `<div class="card"><h1>📲 Install Ido-Osun Market</h1><p class="m">Add the marketplace to your phone's home screen. It opens like an app, loads faster and keeps your cart.</p>${ip?'<button class="btn" data-inst="1">Install now</button>':""}</div><div class="card"><h2>Android (Chrome)</h2><ol><li>Open this site in Chrome.</li><li>Tap <b>Install app</b> at the bottom of the page, or open the ⋮ menu and tap <b>Install app</b> or <b>Add to Home screen</b>.</li><li>Tap <b>Install</b>.</li></ol></div><div class="card"><h2>iPhone (Safari)</h2><ol><li>Open this site in <b>Safari</b>.</li><li>Tap the <b>Share</b> button (the square with an arrow).</li><li>Scroll down and tap <b>Add to Home Screen</b>, then tap <b>Add</b>.</li></ol></div><div class="card" style="text-align:center"><h2>Scan to open on your phone</h2><p class="m">Point your phone camera at this code.</p><img src="/qr.svg?u=${encodeURIComponent(u)}" alt="QR code to open the install guide" style="width:220px;max-width:70%;border-radius:12px"></div>`};
 V.stores=async()=>{const l=await api("/stores");return `<div class="sh"><h1>Local stores</h1></div>`+(l.length?`<div class="sgrid">${l.map(scard).join("")}</div>`:'<p class="m">No stores yet.</p>')};
-V.p=async id=>{const p=await api("/products/"+encodeURIComponent(id));PC[p.id]=p;const d=pct(p);
+V.p=async id=>{const p=await api("/products/"+encodeURIComponent(id));PC[p.id]=p;rv(p);const d=pct(p);
   const rel=(p.related||[]).map(r=>({...r,store_id:p.store_id,store_name:p.store_name,category:p.category}));
   const msg=encodeURIComponent(`Hello ${p.store_name}, I am interested in ${p.name} (${ngn(p.price)}) on Ido-Osun Market.`);
   return `<button class="back" data-back="1">← Back</button><div class="card pd"><div class="pimg">${img("product",p,EM[p.category]||"🛍️")}${d?`<i class="off">-${d}%</i>`:""}</div><div><h1>${esc(p.name)}</h1><div class="pr big">${ngn(p.price)}${d?`<s>${ngn(p.old_price)}</s>`:""}</div><p class="m">Sold by <a href="#/store/${p.store_id}"><b>${esc(p.store_name)}</b></a> · 📍 ${esc(p.location||"Ido-Osun")}</p>${p.description?`<p>${esc(p.description)}</p>`:""}<div data-act="${p.id}" style="margin-top:10px">${stp(p.id)}</div><a class="btn alt" href="#/cart">Go to cart</a><a class="btn wa" target="_blank" rel="noopener" href="https://wa.me/${esc(p.whatsapp)}?text=${msg}">Ask the vendor on WhatsApp</a><button class="btn alt" data-share="1">Share</button></div></div>`+
@@ -174,7 +185,7 @@ V.me=async function(){if(!user){location.hash="#/login";return ""}
 
 V.dash=async()=>{const [s,o]=await Promise.all([api("/vendor/store"),api("/vendor/orders")]);await api("/vendor/orders/seen",{m:"POST"}).catch(()=>{});
   return `<div class="card"><h1>${esc(s.name)}</h1><span class="tag">${esc(s.status)}</span><div class="sl big" style="border-radius:16px;width:100%;height:140px;margin-top:8px">${img("store",s,"🛍️")}</div><button class="btn sm alt" data-ph="store">Change store photo</button>${s.status!=="approved"?'<p class="m">Your store is waiting for approval. It appears publicly once approved.</p>':""}<label>Shop name</label><input id="sn" value="${esc(s.name)}"><label>Description</label><textarea id="sd" rows="3">${esc(s.description)}</textarea><label>Category</label><select id="sc">${opts(s.category)}</select><label>Location</label><input id="sl" value="${esc(s.location)}"><label>WhatsApp number</label><input id="sw" type="tel" value="${esc(s.whatsapp)}"><button class="btn" id="ss">Save store</button><p id="msg"></p></div>`+
-  `<div class="card"><h2>Products</h2>${s.products.map(p=>`<div class="row"><div class="th">${img("product",p,"🛍️")}</div><div style="flex:1">${esc(p.name)}<div class="price">${ngn(p.price)}${p.old_price?` <s class="m">${ngn(p.old_price)}</s>`:""}${p.active?"":" (hidden)"}</div></div><div style="text-align:right"><button class="btn sm alt" data-ph="${p.id}">Photo</button><button class="btn sm alt" data-ep="${p.id}" data-pr="${p.price}">Price</button><button class="btn sm alt" data-ed="${p.id}" data-op="${p.old_price||""}" data-ds="${esc(p.description||"")}">Details</button><button class="btn sm alt" data-tp="${p.id}" data-a="${p.active}">${p.active?"Hide":"Show"}</button><button class="btn sm alt" data-dp="${p.id}">✕</button></div></div>`).join("")}<label>New product</label><input id="pn" placeholder="Name"><input id="pp" type="number" min="0" placeholder="Price in ₦" style="margin-top:8px"><input id="po" type="number" min="0" placeholder="Old price in ₦ (optional, shows a discount)" style="margin-top:8px"><textarea id="pd" rows="2" placeholder="Short description (optional)" style="margin-top:8px"></textarea><button class="btn" id="ap">Add product</button></div>`+
+  `<div class="card hide" id="pc"></div><div class="card"><h2>Products</h2>${s.products.map(p=>`<div class="row"><div class="th">${img("product",p,"🛍️")}</div><div style="flex:1">${esc(p.name)}<div class="price">${ngn(p.price)}${p.old_price?` <s class="m">${ngn(p.old_price)}</s>`:""}${p.active?"":" (hidden)"}</div></div><div style="text-align:right"><button class="btn sm alt" data-ph="${p.id}">Photo</button><button class="btn sm alt" data-ep="${p.id}" data-pr="${p.price}">Price</button><button class="btn sm alt" data-ed="${p.id}" data-op="${p.old_price||""}" data-ds="${esc(p.description||"")}">Details</button><button class="btn sm alt" data-tp="${p.id}" data-a="${p.active}">${p.active?"Hide":"Show"}</button><button class="btn sm alt" data-dp="${p.id}">✕</button></div></div>`).join("")}<label>New product</label><input id="pn" placeholder="Name"><input id="pp" type="number" min="0" placeholder="Price in ₦" style="margin-top:8px"><input id="po" type="number" min="0" placeholder="Old price in ₦ (optional, shows a discount)" style="margin-top:8px"><textarea id="pd" rows="2" placeholder="Short description (optional)" style="margin-top:8px"></textarea><button class="btn" id="ap">Add product</button></div>`+
   `<div class="card"><h2>Recent orders</h2>${o.map(r=>`<div class="row"><div style="flex:1">${r.seen?"":'<span class="tag" style="background:var(--g);color:var(--gt)">NEW</span> '}<strong>${esc(r.buyer_name||"No name")}</strong> <span class="m">${new Date(r.created_at).toLocaleDateString("en-NG")}</span><br><span class="m">${r.items.map(i=>esc(i.qty+" x "+i.name)).join(", ")}</span></div><div class="price">${ngn(r.total)}</div></div>`).join("")||'<p class="m">No orders yet.</p>'}</div>`};
 V.admin=async function(){var l=await api("/admin/stores"),rp=await api("/admin/reports"),dm=await api("/admin/demo");
   return '<div class="card"><h1>Demo data</h1><p class="m">'+(dm.stores?dm.stores+' demo stores are loaded.':'No demo data loaded.')+' Sample vendors and products for presentations. Orders on demo products go to the WhatsApp number you enter. Remove it before you open to the public.</p><button class="btn sm" data-demo="load">'+(dm.stores?'Reload':'Load')+' demo products</button>'+(dm.stores?'<button class="btn sm alt" data-demo="clear">Remove demo data</button>':'')+'</div><div class="card"><h1>Open reports ('+rp.length+')</h1>'+(rp.map(function(r){return '<div class="row"><div><strong>'+esc(r.store_name)+'</strong><br><span class="m">'+esc(r.reason)+(r.details?": "+esc(r.details):"")+'</span><div><button class="btn sm alt" data-rv="'+r.id+'">Resolve</button><button class="btn sm alt" data-ad="suspend-'+r.store_id+'">Suspend store</button></div></div></div>'}).join("")||'<p class="m">No open reports.</p>')+'</div><div class="card"><h1>Vendor approvals</h1></div>'+l.map(function(s){return '<div class="card"><h2>'+esc(s.name)+'</h2><span class="tag">'+esc(s.status)+'</span><p class="m">'+esc(s.category)+' · '+esc(s.location||"")+'<br>'+esc(s.email)+' · WhatsApp '+esc(s.whatsapp)+'</p><button class="btn sm" data-ad="approve-'+s.id+'">Approve</button><button class="btn sm alt" data-ad="reject-'+s.id+'">Reject</button><button class="btn sm alt" data-ad="suspend-'+s.id+'">Suspend</button></div>'}).join("")};
@@ -190,13 +201,30 @@ contact:["Contact us",function(){return CFG.whatsapp?'<p>Questions, problems or 
 Object.keys(PG).forEach(function(k){V[k]=async function(){return '<div class="card"><h1>'+PG[k][0]+'</h1>'+PG[k][1]()+'</div>'}});
 
 
+const b64=s=>{const r=(s+"=".repeat((4-s.length%4)%4)).replace(/-/g,"+").replace(/_/g,"/"),a=atob(r);return Uint8Array.from(a,c=>c.charCodeAt(0))};
+const pushOK=()=>"serviceWorker" in navigator&&"PushManager" in window&&"Notification" in window;
+async function initPush(){const el=$("pc");if(!el)return;
+  let key=null;try{key=(await api("/push/key")).key}catch(e){}
+  if(!key)return;
+  if(!pushOK()){el.classList.remove("hide");el.innerHTML='<h2>🔔 Order notifications</h2><p class="m">To get a phone notification for every new order, install this app on your home screen and open it from there. On iPhone: Safari, Share, Add to Home Screen. See the <a href="#/install"><b>install guide</b></a>.</p>';return}
+  const reg=await Promise.race([navigator.serviceWorker.ready,new Promise(r=>setTimeout(()=>r(null),4000))]);
+  if(!reg)return;const sub=await reg.pushManager.getSubscription();
+  el.classList.remove("hide");
+  el.innerHTML=`<h2>🔔 Order notifications</h2><p class="m">${sub?"This phone gets a notification for every new order.":"Get a notification on this phone when a customer places an order."}</p><button class="btn${sub?" alt":""}" data-push="1">${sub?"Turn off notifications":"Turn on notifications"}</button>`}
+async function pushToggle(){const reg=await navigator.serviceWorker.ready;let sub=await reg.pushManager.getSubscription();
+  if(sub){await api("/vendor/push/unsubscribe",{m:"POST",b:{endpoint:sub.endpoint}});await sub.unsubscribe();return false}
+  const {key}=await api("/push/key");if(!key)throw new Error("Notifications are not set up yet.");
+  if(await Notification.requestPermission()!=="granted")throw new Error("Notifications are blocked. Allow them in your browser or phone settings.");
+  sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64(key)});
+  await api("/vendor/push/subscribe",{m:"POST",b:sub.toJSON()});return true}
+
 /* ---------- router, events, startup ---------- */
 function poll(){if(!tok||!user||user.role!=="vendor"){$("ab").style.display="none";return}api("/vendor/orders/unread").then(r=>{$("ab").textContent=r.n;$("ab").style.display=r.n?"":"none"}).catch(()=>{})}
 const NET=["","home","shop","search","store","p","stores","dash","admin"],NAV={home:"home",cats:"cats",cart:"cart",me:"me",login:"me",register:"me",dash:"me",admin:"me"};
 async function route(){const rid=++RID,h=location.hash.replace("#/","").split("/"),k=h[0]||"home",f=V[k]||V.home;
   if(NET.includes(k))$("app").innerHTML=k==="home"||k==="shop"||k==="search"?sk(6):'<p class="m">Loading…</p>';
-  let out;try{out=await f(h[1])}catch(e){out=`<div class="card"><p class="m">${esc(e.message)}</p><a class="btn" href="#/">Back to home</a></div>`}
-  if(rid!==RID)return;$("app").innerHTML=out;window.scrollTo(0,0);poll();autoBanner();
+  let out;try{out=await f(h[1])}catch(e){out=`<div class="card" style="text-align:center"><div style="font-size:2.4rem">📡</div><p class="m">${esc(e.message)}</p><button class="btn" data-retry="1">Try again</button><a class="btn alt" href="#/">Back to home</a></div>`}
+  if(rid!==RID)return;$("app").innerHTML=out;window.scrollTo(0,0);poll();autoBanner();if(k==="dash")initPush();
   document.querySelectorAll(".bn a").forEach(a=>a.classList.toggle("on",a.dataset.n===(NAV[k]||(k==="home"?"home":""))))}
 const login=r=>{tok=r.token;user=r.user;sv("t",tok);sv("u",user);location.hash=user.role==="vendor"?"#/dash":"#/"};
 function shrink(f,max){return new Promise((ok,no)=>{const i=new Image(),u=URL.createObjectURL(f);i.onload=()=>{const s=Math.min(1,max/Math.max(i.width,i.height)),c=document.createElement("canvas");c.width=Math.round(i.width*s);c.height=Math.round(i.height*s);c.getContext("2d").drawImage(i,0,0,c.width,c.height);URL.revokeObjectURL(u);c.toBlob(b=>b&&b.size<400000?ok(b):no(new Error("Photo is too large. Try a smaller one.")),"image/jpeg",0.8)};i.onerror=()=>no(new Error("Could not read that photo. Try a JPEG or PNG."));i.src=u})}
@@ -212,6 +240,10 @@ document.addEventListener("click",e=>{
   if(d.more)act(async()=>{const r=await fetchP(SH.off);$("pg").insertAdjacentHTML("beforeend",r.map(card).join(""));if(!SH.more)t.remove()});
   if(d.order)act(async()=>{const sid=d.order,items=Object.keys(cart).filter(k=>cart[k].s==sid).map(k=>({product_id:k,qty:cart[k].q})),n=$("bn").value,l=$("bl").value;sv("buyer",{n,l});
     const r=await api("/orders",{m:"POST",b:{store_id:sid,items,name:n,location:l}});items.forEach(i=>delete cart[i.product_id]);saveCart();location.href=r.url});
+  if(d.retry){route();return}
+  if(d.hi){sv("hi",1);const c=t.closest(".card");c&&c.remove();return}
+  if(d.inst){if(ip){ip.prompt();ip=null}else toast("Use your browser menu: Install app or Add to Home screen");return}
+  if(d.push){act(async()=>{const on=await pushToggle();toast(on?"Order notifications are on":"Order notifications are off");initPush()});return}
   if(d.rp)$("rf").classList.toggle("hide");
   if(d.rs)act(async()=>{await api("/reports",{m:"POST",b:{store_id:d.rs,reason:$("rr").value,details:$("rd").value}});$("msg").textContent="Thank you. Our team will review this report.";t.disabled=true});
   if(d.rv)act(async()=>{await api("/admin/reports/"+d.rv+"/resolve",{m:"POST"});route()});
@@ -241,7 +273,9 @@ $("sf").onsubmit=e=>{e.preventDefault();const v=$("sq").value.trim();if(v)locati
 $("bt").onclick=()=>{const r=document.documentElement,d=r.getAttribute("data-theme")==="dark"||(!r.getAttribute("data-theme")&&matchMedia("(prefers-color-scheme:dark)").matches);r.setAttribute("data-theme",d?"light":"dark")};
 addEventListener("beforeinstallprompt",e=>{e.preventDefault();ip=e;$("inst").classList.remove("hide")});
 $("inst").onclick=e=>{e.preventDefault();if(ip){ip.prompt();ip=null;$("inst").classList.add("hide")}};
-window.addEventListener("hashchange",route);count();
+const net=()=>$("ob").classList.toggle("hide",navigator.onLine!==false);
+addEventListener("offline",net);addEventListener("online",()=>{net();if(["","home","shop","search","store","p","stores"].includes(location.hash.replace("#/","").split("/")[0]))route()});
+window.addEventListener("hashchange",route);count();net();
 api("/config").then(c=>{CFG=c;if(c.whatsapp){const f=$("fwa");f.href="https://wa.me/"+c.whatsapp;f.classList.remove("hide")}}).catch(()=>{}).then(route);
 setInterval(poll,60000);
 if("serviceWorker" in navigator)navigator.serviceWorker.register("/sw.js").catch(()=>{});

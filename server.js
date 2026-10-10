@@ -74,16 +74,16 @@ app.post('/api/auth/login', authLimit, ah(async (req, res) => {
 app.get('/api/stores', ah(async (req, res) => {
   const q = '%' + String(req.query.q || '').toLowerCase() + '%', cat = String(req.query.cat || '');
   res.json((await db.query(
-    `SELECT id,name,description,category,location FROM stores
+    `SELECT id,name,description,category,location,(image IS NOT NULL) AS img,image_v FROM stores
      WHERE status='approved' AND ($1='' OR category=$1)
      AND lower(name||' '||coalesce(description,'')||' '||category||' '||coalesce(location,'')) LIKE $2
      ORDER BY id DESC LIMIT 200`, [cat, q])).rows);
 }));
 
 app.get('/api/stores/:id', ah(async (req, res) => {
-  const s = (await db.query("SELECT id,name,description,category,location,whatsapp FROM stores WHERE id=$1 AND status='approved'", [req.params.id])).rows[0];
+  const s = (await db.query("SELECT id,name,description,category,location,whatsapp,(image IS NOT NULL) AS img,image_v FROM stores WHERE id=$1 AND status='approved'", [req.params.id])).rows[0];
   if (!s) return bad(res, 'Store not found', 404);
-  s.products = (await db.query('SELECT id,name,price FROM products WHERE store_id=$1 AND active ORDER BY id', [s.id])).rows;
+  s.products = (await db.query('SELECT id,name,price,(image IS NOT NULL) AS img,image_v FROM products WHERE store_id=$1 AND active ORDER BY id', [s.id])).rows;
   res.json(s);
 }));
 
@@ -113,9 +113,9 @@ app.post('/api/orders', orderLimit, ah(async (req, res) => {
 /* ---------- vendor dashboard ---------- */
 const mine = `(SELECT id FROM stores WHERE owner_id=$1)`;
 app.get('/api/vendor/store', need('vendor'), ah(async (req, res) => {
-  const s = (await db.query('SELECT id,name,description,category,location,whatsapp,status FROM stores WHERE owner_id=$1', [req.user.id])).rows[0];
+  const s = (await db.query('SELECT id,name,description,category,location,whatsapp,status,(image IS NOT NULL) AS img,image_v FROM stores WHERE owner_id=$1', [req.user.id])).rows[0];
   if (!s) return bad(res, 'No store found', 404);
-  s.products = (await db.query('SELECT id,name,price,active FROM products WHERE store_id=$1 ORDER BY id', [s.id])).rows;
+  s.products = (await db.query('SELECT id,name,price,active,(image IS NOT NULL) AS img,image_v FROM products WHERE store_id=$1 ORDER BY id', [s.id])).rows;
   res.json(s);
 }));
 
@@ -152,6 +152,27 @@ app.get('/api/vendor/orders', need('vendor'), ah(async (req, res) => {
     WHERE store_id=${mine} ORDER BY id DESC LIMIT 100`, [req.user.id])).rows);
 }));
 
+/* ---------- photos (stored in Postgres; the browser shrinks them first) ---------- */
+const jpeg = express.raw({ type: 'image/jpeg', limit: '400kb' });
+const isJpeg = b => Buffer.isBuffer(b) && b.length > 4 && b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF;
+app.put('/api/vendor/store/image', need('vendor'), jpeg, ah(async (req, res) => {
+  if (!isJpeg(req.body)) return bad(res, 'Please upload a JPEG photo under 400 KB');
+  await db.query('UPDATE stores SET image=$2, image_v=image_v+1 WHERE owner_id=$1', [req.user.id, req.body]);
+  res.json({ ok: true });
+}));
+app.put('/api/vendor/products/:id/image', need('vendor'), jpeg, ah(async (req, res) => {
+  if (!isJpeg(req.body)) return bad(res, 'Please upload a JPEG photo under 400 KB');
+  const r = await db.query(`UPDATE products SET image=$3, image_v=image_v+1 WHERE id=$2 AND store_id=${mine}`, [req.user.id, req.params.id, req.body]);
+  r.rowCount ? res.json({ ok: true }) : bad(res, 'Product not found', 404);
+}));
+const IMG = { store: 'stores', product: 'products' };
+app.get('/img/:kind/:id', ah(async (req, res) => {
+  const t = IMG[req.params.kind];
+  const r = t && await db.query(`SELECT image FROM ${t} WHERE id=$1`, [req.params.id]);
+  if (!r || !r.rows[0] || !r.rows[0].image) return res.status(404).end();
+  res.set({ 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=31536000, immutable' }).send(r.rows[0].image);
+}));
+
 /* ---------- admin ---------- */
 app.get('/api/admin/stores', need('admin'), ah(async (req, res) => {
   res.json((await db.query(`SELECT s.id,s.name,s.category,s.location,s.whatsapp,s.status,u.email
@@ -170,6 +191,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/api', (req, res) => bad(res, 'Not found', 404));
 app.use((e, req, res, next) => {
   if (e.code === '22P02') return bad(res, 'Invalid request');
+  if (e.type === 'entity.too.large') return bad(res, 'That photo is too large. Try a smaller one.', 413);
   console.error(e); bad(res, 'Server error', 500);
 });
 

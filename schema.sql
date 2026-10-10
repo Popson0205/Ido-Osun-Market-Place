@@ -41,3 +41,9 @@ CREATE TABLE IF NOT EXISTS orders (
 
 CREATE INDEX IF NOT EXISTS idx_products_store ON products(store_id);
 CREATE INDEX IF NOT EXISTS idx_orders_store ON orders(store_id, id DESC);
+
+-- Photos (added in v1.1; safe to re-run on an existing database)
+ALTER TABLE stores ADD COLUMN IF NOT EXISTS image BYTEA;
+ALTER TABLE stores ADD COLUMN IF NOT EXISTS image_v INT NOT NULL DEFAULT 0;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS image BYTEA;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS image_v INT NOT NULL DEFAULT 0;

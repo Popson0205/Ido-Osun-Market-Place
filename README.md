@@ -16,6 +16,9 @@ Register on the site with the exact email set in `ADMIN_EMAIL`. That account get
 - **Vendor dashboard:** edit store details, add/hide/delete products, change prices, see recent orders.
 - **Ordering:** the cart is grouped by store. The server recomputes prices from the database, saves the order, and returns a `wa.me` link to that vendor's number with the order text. The vendor sees it in their dashboard too.
 
+## Photos
+Vendors add a store photo and a photo per product from their dashboard. The browser shrinks each photo to about 900px JPEG (under 400 KB) before upload, and the server keeps it in PostgreSQL, so no extra storage service or Railway volume is needed. This is fine for hundreds of products; if you grow to thousands, move images to Cloudflare R2 or S3.
+
 ## Deploy on Railway
 1. Push this folder to a GitHub repo (the `.gitignore` below keeps secrets out: add `.env` and `node_modules`).
 2. Railway: New Project > Deploy from GitHub repo.
@@ -30,4 +33,4 @@ Register on the site with the exact email set in `ADMIN_EMAIL`. That account get
 If the app logs a database SSL error, set `DB_SSL` to `true` or `false` to match your database.
 
 ## Not included yet
-Product and store photos, password reset, email verification, Google sign-in, online payments, and delivery tracking. The referral code is stored but not used for rewards.
+password reset, email verification, Google sign-in, online payments, and delivery tracking. The referral code is stored but not used for rewards.

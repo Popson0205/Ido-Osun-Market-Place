@@ -39,6 +39,8 @@ input,select,textarea{width:100%;border:0;background:var(--inp);color:var(--ink)
 footer{background:#1d2b24;color:#e9f1ec;padding:20px;text-align:center;font-size:.85rem}
 .hide{display:none}
 #msg{color:var(--g);font-size:.9rem;margin:8px 0 0}
+.cover{overflow:hidden}.cover img{width:100%;height:100%;object-fit:cover}
+.th{width:56px;height:56px;border-radius:12px;background:var(--inp);display:flex;align-items:center;justify-content:center;font-size:1.6rem;overflow:hidden;flex:none}.th img{width:100%;height:100%;object-fit:cover}
 </style>
 </head>
 <body>
@@ -49,6 +51,7 @@ footer{background:#1d2b24;color:#e9f1ec;padding:20px;text-align:center;font-size
   <button class="ic" id="ba" title="Account">👤</button>
 </div>
 <main id="app"></main>
+<input type="file" id="pf" accept="image/*" hidden>
 <footer>© 2026 Ido-Osun Market · Launching with the Ido-Osun Digital Summit</footer>
 <script>
 var CATS=["Fresh Produce","Food","Fashion","Beads & Crafts","Pre-owned","Services","General"];
@@ -58,6 +61,8 @@ var sv=function(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem
 var tok=ls("t"),user=ls("u"),cart=ls("cart")||{},ST=[],cat="All",q="";
 var ngn=function(x){return "₦"+Number(x).toLocaleString("en-NG")};
 var esc=function(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})};
+var pic=function(k,o,fb){return o.img?'<img src="/img/'+k+'/'+o.id+'?v='+o.image_v+'" alt="" loading="lazy">':fb};
+var pend=null;
 var emoji={"Fresh Produce":"🥬","Food":"🍛","Fashion":"🧵","Beads & Crafts":"📿","Pre-owned":"🪑","Services":"🔧"};
 async function api(p,o){o=o||{};var h={"Content-Type":"application/json"};if(tok)h.Authorization="Bearer "+tok;
   var r=await fetch("/api"+p,{method:o.m||"GET",headers:h,body:o.b?JSON.stringify(o.b):undefined});
@@ -69,14 +74,14 @@ function count(){var n=0;for(var k in cart)n+=cart[k].q;$("cn").textContent=n}
 function opts(sel){return CATS.map(function(c){return '<option'+(c===sel?' selected':'')+'>'+c+'</option>'}).join("")}
 function list(){
   var l=ST.filter(function(s){return (cat==="All"||s.category===cat)&&(s.name+" "+(s.description||"")+" "+s.category+" "+(s.location||"")).toLowerCase().indexOf(q)>-1});
-  return l.map(function(s){return '<div class="card"><div class="cover">'+(emoji[s.category]||"🛍️")+'</div><h2>'+esc(s.name)+'</h2><p class="m">'+esc(s.description||"")+'</p><span class="tag">'+esc(s.category)+'</span><p class="m">📍 '+esc(s.location||"Ido-Osun")+'</p><a class="btn" href="#/store/'+s.id+'">View store</a></div>'}).join("")||'<p class="m">No stores yet. Be the first vendor!</p>'}
+  return l.map(function(s){return '<div class="card"><div class="cover">'+pic("store",s,emoji[s.category]||"🛍️")+'</div><h2>'+esc(s.name)+'</h2><p class="m">'+esc(s.description||"")+'</p><span class="tag">'+esc(s.category)+'</span><p class="m">📍 '+esc(s.location||"Ido-Osun")+'</p><a class="btn" href="#/store/'+s.id+'">View store</a></div>'}).join("")||'<p class="m">No stores yet. Be the first vendor!</p>'}
 var V={};
 V.stores=async function(){ST=await api("/stores");
   return '<div class="card"><h1>Our stores</h1><p class="m">Order straight from local vendors on WhatsApp.</p><input id="sq" type="search" placeholder="Search stores or products" value="'+esc(q)+'"><div class="chips" style="margin-top:12px">'+
   ["All"].concat(CATS).map(function(c){return '<button class="chip'+(c===cat?' on':'')+'" data-cat="'+esc(c)+'">'+esc(c)+'</button>'}).join("")+'</div></div><div id="list">'+list()+'</div>'};
 V.store=async function(id){var s=await api("/stores/"+encodeURIComponent(id));
-  return '<a href="#/" class="m">← All stores</a><div class="card" style="margin-top:10px"><div class="cover">'+(emoji[s.category]||"🛍️")+'</div><h1>'+esc(s.name)+'</h1><p class="m">'+esc(s.description||"")+'</p><span class="tag">'+esc(s.category)+'</span><span class="tag">📍 '+esc(s.location||"Ido-Osun")+'</span><a class="btn wa" target="_blank" rel="noopener" href="https://wa.me/'+esc(s.whatsapp)+'">Chat with vendor on WhatsApp</a></div>'+
-  '<div class="card"><h2>Products</h2>'+(s.products.map(function(p){return '<div class="row"><div>'+esc(p.name)+'<div class="price">'+ngn(p.price)+'</div></div><button class="btn sm" data-add="'+p.id+'" data-s="'+s.id+'" data-sn="'+esc(s.name)+'" data-n="'+esc(p.name)+'" data-p="'+p.price+'">Add</button></div>'}).join("")||'<p class="m">No products listed yet.</p>')+'</div>'};
+  return '<a href="#/" class="m">← All stores</a><div class="card" style="margin-top:10px"><div class="cover">'+pic("store",s,emoji[s.category]||"🛍️")+'</div><h1>'+esc(s.name)+'</h1><p class="m">'+esc(s.description||"")+'</p><span class="tag">'+esc(s.category)+'</span><span class="tag">📍 '+esc(s.location||"Ido-Osun")+'</span><a class="btn wa" target="_blank" rel="noopener" href="https://wa.me/'+esc(s.whatsapp)+'">Chat with vendor on WhatsApp</a></div>'+
+  '<div class="card"><h2>Products</h2>'+(s.products.map(function(p){return '<div class="row"><div class="th">'+pic("product",p,"🛍️")+'</div><div style="flex:1">'+esc(p.name)+'<div class="price">'+ngn(p.price)+'</div></div><button class="btn sm" data-add="'+p.id+'" data-s="'+s.id+'" data-sn="'+esc(s.name)+'" data-n="'+esc(p.name)+'" data-p="'+p.price+'">Add</button></div>'}).join("")||'<p class="m">No products listed yet.</p>')+'</div>'};
 V.cart=async function(){
   var g={};Object.keys(cart).forEach(function(k){(g[cart[k].s]=g[cart[k].s]||[]).push(k)});var ids=Object.keys(g);
   if(!ids.length)return '<div class="card"><h1>Your cart</h1><p class="m">Your cart is empty.</p><a class="btn" href="#/">Browse stores</a></div>';
@@ -91,9 +96,9 @@ V.register=async function(){return '<div class="card"><h1>Create your account</h
 V.me=async function(){if(!user){location.hash="#/login";return ""}
   return '<div class="card"><h1>Hi, '+esc(user.first)+'</h1>'+(user.role==="vendor"?'<a class="btn" href="#/dash">My store dashboard</a>':'')+(user.role==="admin"?'<a class="btn" href="#/admin">Approve vendors</a>':'')+'<button class="btn alt" id="out">Log out</button></div>'};
 V.dash=async function(){var s=await api("/vendor/store"),o=await api("/vendor/orders");
-  return '<div class="card"><h1>'+esc(s.name)+'</h1><span class="tag">'+esc(s.status)+'</span>'+(s.status!=="approved"?'<p class="m">Your store is waiting for approval. It appears publicly once approved.</p>':'')+
+  return '<div class="card"><h1>'+esc(s.name)+'</h1><span class="tag">'+esc(s.status)+'</span><div class="cover" style="height:140px;margin:10px 0 0;border-radius:16px">'+pic("store",s,"🛍️")+'</div><button class="btn sm alt" data-ph="store">Change store photo</button>'+(s.status!=="approved"?'<p class="m">Your store is waiting for approval. It appears publicly once approved.</p>':'')+
   '<label>Shop name</label><input id="sn" value="'+esc(s.name)+'"><label>Description</label><textarea id="sd" rows="3">'+esc(s.description)+'</textarea><label>Category</label><select id="sc">'+opts(s.category)+'</select><label>Location</label><input id="sl" value="'+esc(s.location)+'"><label>WhatsApp number</label><input id="sw" type="tel" value="'+esc(s.whatsapp)+'"><button class="btn" id="ss">Save store</button><p id="msg"></p></div>'+
-  '<div class="card"><h2>Products</h2>'+s.products.map(function(p){return '<div class="row"><div>'+esc(p.name)+'<div class="price">'+ngn(p.price)+(p.active?'':' (hidden)')+'</div></div><div><button class="btn sm alt" data-ep="'+p.id+'" data-pr="'+p.price+'">Price</button><button class="btn sm alt" data-tp="'+p.id+'" data-a="'+p.active+'">'+(p.active?"Hide":"Show")+'</button><button class="btn sm alt" data-dp="'+p.id+'">✕</button></div></div>'}).join("")+
+  '<div class="card"><h2>Products</h2>'+s.products.map(function(p){return '<div class="row"><div class="th">'+pic("product",p,"🛍️")+'</div><div style="flex:1">'+esc(p.name)+'<div class="price">'+ngn(p.price)+(p.active?'':' (hidden)')+'</div></div><div><button class="btn sm alt" data-ph="'+p.id+'">Photo</button><button class="btn sm alt" data-ep="'+p.id+'" data-pr="'+p.price+'">Price</button><button class="btn sm alt" data-tp="'+p.id+'" data-a="'+p.active+'">'+(p.active?"Hide":"Show")+'</button><button class="btn sm alt" data-dp="'+p.id+'">✕</button></div></div>'}).join("")+
   '<label>New product</label><input id="pn" placeholder="Name"><input id="pp" type="number" min="0" placeholder="Price in ₦" style="margin-top:8px"><button class="btn" id="ap">Add product</button></div>'+
   '<div class="card"><h2>Recent orders</h2>'+(o.map(function(r){return '<div class="row"><div><strong>'+esc(r.buyer_name||"No name")+'</strong> <span class="m">'+new Date(r.created_at).toLocaleDateString("en-NG")+'</span><br><span class="m">'+r.items.map(function(i){return esc(i.qty+" x "+i.name)}).join(", ")+'</span></div><div class="price">'+ngn(r.total)+'</div></div>'}).join("")||'<p class="m">No orders yet.</p>')+'</div>'};
 V.admin=async function(){var l=await api("/admin/stores");
@@ -124,11 +129,16 @@ document.addEventListener("click",function(e){
   if(d.ep)act(async function(){var p=prompt("New price in ₦",d.pr);if(p===null)return;await api("/vendor/products/"+d.ep,{m:"PUT",b:{price:p}});route()});
   if(d.tp)act(async function(){await api("/vendor/products/"+d.tp,{m:"PUT",b:{active:d.a!=="true"}});route()});
   if(d.dp&&confirm("Delete this product?"))act(async function(){await api("/vendor/products/"+d.dp,{m:"DELETE"});route()});
+  if(d.ph){pend=d.ph;$("pf").value="";$("pf").click()}
   if(d.ad)act(async function(){var a=d.ad.split("-");await api("/admin/stores/"+a[1]+"/"+a[0],{m:"POST"});route()});
 });
 document.addEventListener("input",function(e){
   if(e.target.id==="sq"){q=e.target.value.toLowerCase();$("list").innerHTML=list()}
   if(e.target.id==="vt")$("vf").classList.toggle("hide",!e.target.checked)});
+function shrink(f,max){return new Promise(function(ok,no){var i=new Image(),u=URL.createObjectURL(f);i.onload=function(){var s=Math.min(1,max/Math.max(i.width,i.height)),c=document.createElement("canvas");c.width=Math.round(i.width*s);c.height=Math.round(i.height*s);c.getContext("2d").drawImage(i,0,0,c.width,c.height);URL.revokeObjectURL(u);c.toBlob(function(b){b&&b.size<400000?ok(b):no(new Error("Photo is too large. Try a smaller one."))},"image/jpeg",0.8)};i.onerror=function(){no(new Error("Could not read that photo. Try a JPEG or PNG."))};i.src=u})}
+$("pf").onchange=function(){var f=this.files[0];if(!f||!pend)return;act(async function(){var b=await shrink(f,900),u=pend==="store"?"/vendor/store/image":"/vendor/products/"+pend+"/image";
+  var r=await fetch("/api"+u,{method:"PUT",headers:{"Content-Type":"image/jpeg",Authorization:"Bearer "+tok},body:b}),d=await r.json().catch(function(){return {}});
+  if(!r.ok)throw new Error(d.error||"Upload failed");route()})};
 $("bt").onclick=function(){var r=document.documentElement,d=r.getAttribute("data-theme")==="dark"||(!r.getAttribute("data-theme")&&matchMedia("(prefers-color-scheme:dark)").matches);r.setAttribute("data-theme",d?"light":"dark")};
 $("bc").onclick=function(){location.hash="#/cart"};
 $("ba").onclick=function(){location.hash=user?"#/me":"#/login"};

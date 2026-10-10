@@ -1,6 +1,6 @@
 // Service worker: installable app, offline browsing of recently viewed pages, and vendor order notifications.
 // Public catalogue data and photos are cached; accounts, orders and vendor/admin data are never cached here.
-const VER = 'iom-v4', SHELL = VER + '-shell', API = VER + '-api', IMG = VER + '-img';
+const VER = 'iom-v5', SHELL = VER + '-shell', API = VER + '-api', IMG = VER + '-img';
 const PRECACHE = ['/', '/offline.html', '/manifest.webmanifest', '/icon-192.png'];
 const PUBLIC_API = /^\/api\/(products|stores)(\/\d+)?$|^\/api\/config$/;
 const trim = async (name, max) => { const c = await caches.open(name), k = await c.keys(); for (let i = 0; i < k.length - max; i++) await c.delete(k[i]); };

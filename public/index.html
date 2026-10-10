@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#2f5d50">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -155,7 +156,7 @@ const mapBox=(id,h)=>`<div id="${id}" class="map" style="height:${h}px">${hasMap
 const killMaps=()=>{Object.keys(MAPS).forEach(k=>{try{MAPS[k].remove()}catch(e){}delete MAPS[k]});AMK=null;PK.map=PK.set=null;PK.lat=PK.lng=null};
 const pin=(c,e)=>L.divIcon({className:"pin",html:`<span style="background:${c}"><i>${e||"🏪"}</i></span>`,iconSize:[32,32],iconAnchor:[16,32],popupAnchor:[0,-30]});
 function newMap(id,c,z,scroll){if(!hasMap()||!$(id))return null;const m=L.map(id,{scrollWheelZoom:!!scroll}).setView(c||HOME,z||11);
-  const o=L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap contributors"}).addTo(m),
+  const o=L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,referrerPolicy:"strict-origin-when-cross-origin",attribution:"© OpenStreetMap contributors"}).addTo(m),
   s=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:"Imagery © Esri, Maxar, Earthstar Geographics"});
   L.control.layers({"Streets":o,"Satellite":s},null,{position:"topright"}).addTo(m);MAPS[id]=m;setTimeout(()=>{try{m.invalidateSize()}catch(e){}},250);return m}
 const geoPos=()=>new Promise((ok,no)=>{if(!navigator.geolocation)return no(new Error("Your browser cannot share your location."));navigator.geolocation.getCurrentPosition(ok,e=>no(new Error(e&&e.code===1?"Location permission was denied. Allow it in your browser settings.":"Could not get your location.")),{enableHighAccuracy:true,timeout:15000})});

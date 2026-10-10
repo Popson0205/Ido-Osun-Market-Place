@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <title>Admin · Ido-Osun Market</title>
@@ -232,7 +233,7 @@ function initMap(){
   if(typeof L==="undefined"){$("mapbox").innerHTML='<p class="m" style="padding:16px">The map could not load. Check your connection and refresh.</p>';return}
   if(!map){
     map=L.map("mapbox",{scrollWheelZoom:true}).setView([7.783,4.483],10);
-    var o=L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap contributors"}).addTo(map),
+    var o=L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,referrerPolicy:"strict-origin-when-cross-origin",attribution:"© OpenStreetMap contributors"}).addTo(map),
         sat=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:"Imagery © Esri, Maxar, Earthstar Geographics"});
     L.control.layers({"Streets":o,"Satellite":sat},null,{position:"topright"}).addTo(map);
     drawMap(true);

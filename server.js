@@ -37,7 +37,8 @@ const PUSH_HOSTS = new RegExp('^(fcm\\.googleapis\\.com|android\\.googleapis\\.c
 
 const app = express();
 app.set('trust proxy', 1);
-app.use(helmet({ contentSecurityPolicy: false }));
+// OpenStreetMap's tile servers block requests that carry no Referer, and helmet's default is no-referrer. Send the origin only.
+app.use(helmet({ contentSecurityPolicy: false, referrerPolicy: { policy: 'strict-origin-when-cross-origin' } }));
 app.use(express.json({ limit: '50kb' }));
 
 const ah = f => (req, res, next) => f(req, res, next).catch(next);

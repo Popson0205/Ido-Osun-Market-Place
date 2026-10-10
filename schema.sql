@@ -82,3 +82,6 @@ CREATE TABLE IF NOT EXISTS password_resets (
   used BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Stock (added in v1.3; safe to re-run). NULL = quantity not tracked (older products); 0 = sold out.
+ALTER TABLE products ADD COLUMN IF NOT EXISTS stock INT CHECK (stock >= 0);

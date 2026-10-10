@@ -43,7 +43,7 @@ app.use(express.json({ limit: '50kb' }));
 const ah = f => (req, res, next) => f(req, res, next).catch(next);
 const authLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 30 });
 const orderLimit = rateLimit({ windowMs: 10 * 60 * 1000, max: 40 });
-const sign = u => jwt.sign({ id: u.id, role: u.role }, JWT_SECRET, { expiresIn: '7d' });
+const sign = (u, remember = true) => jwt.sign({ id: u.id, role: u.role }, JWT_SECRET, { expiresIn: remember ? '30d' : '1d' });   // 'keep me signed in' = 30 days
 const bad = (res, msg, code = 400) => res.status(code).json({ error: msg });
 const ngn = n => '₦' + n.toLocaleString('en-NG');
 const money = v => { const n = Number(v); return Number.isInteger(n) && n >= 0 && n <= 100000000 ? n : null; };
@@ -91,7 +91,7 @@ app.post('/api/auth/login', authLimit, ah(async (req, res) => {
   const u = (await db.query('SELECT id,first,role,password_hash FROM users WHERE email=$1',
     [String(req.body.email || '').trim().toLowerCase()])).rows[0];
   if (!u || !(await bcrypt.compare(String(req.body.password || ''), u.password_hash))) return bad(res, 'Wrong email or password', 401);
-  res.json({ token: sign(u), user: { first: u.first, role: u.role } });
+  res.json({ token: sign(u, req.body.remember !== false), user: { first: u.first, role: u.role } });
 }));
 
 /* ---------- password reset by email ---------- */
@@ -158,7 +158,7 @@ app.get('/api/stores', ah(async (req, res) => {
 app.get('/api/stores/:id', ah(async (req, res) => {
   const s = (await db.query("SELECT id,name,description,category,location,whatsapp,(image IS NOT NULL) AS img,image_v FROM stores WHERE id=$1 AND status='approved'", [req.params.id])).rows[0];
   if (!s) return bad(res, 'Store not found', 404);
-  s.products = (await db.query('SELECT id,name,price,old_price,(image IS NOT NULL) AS img,image_v FROM products WHERE store_id=$1 AND active ORDER BY id DESC', [s.id])).rows;
+  s.products = (await db.query('SELECT id,name,price,old_price,(image IS NOT NULL) AS img,image_v FROM products WHERE store_id=$1 AND active AND (stock IS NULL OR stock>0) ORDER BY id DESC', [s.id])).rows;
   res.json(s);
 }));
 
@@ -172,7 +172,7 @@ app.get('/api/products', ah(async (req, res) => {
     `SELECT p.id,p.name,p.price,p.old_price,(p.image IS NOT NULL) AS img,p.image_v,
             s.id AS store_id,s.name AS store_name,s.category,s.location
      FROM products p JOIN stores s ON s.id=p.store_id
-     WHERE p.active AND s.status='approved' AND ($1='' OR s.category=$1)
+     WHERE p.active AND (p.stock IS NULL OR p.stock>0) AND s.status='approved' AND ($1='' OR s.category=$1)
        AND (NOT $2::boolean OR (p.old_price IS NOT NULL AND p.old_price>p.price))
        AND lower(p.name||' '||s.name||' '||s.category) LIKE $3
      ORDER BY ${order} LIMIT ${limit} OFFSET ${offset}`, [cat, deals, q])).rows);
@@ -180,14 +180,14 @@ app.get('/api/products', ah(async (req, res) => {
 
 app.get('/api/products/:id', ah(async (req, res) => {
   const p = (await db.query(
-    `SELECT p.id,p.name,p.price,p.old_price,p.description,(p.image IS NOT NULL) AS img,p.image_v,
+    `SELECT p.id,p.name,p.price,p.old_price,p.description,p.stock,(p.image IS NOT NULL) AS img,p.image_v,
             s.id AS store_id,s.name AS store_name,s.category,s.location,s.whatsapp
      FROM products p JOIN stores s ON s.id=p.store_id
-     WHERE p.id=$1 AND p.active AND s.status='approved'`, [req.params.id])).rows[0];
+     WHERE p.id=$1 AND p.active AND (p.stock IS NULL OR p.stock>0) AND s.status='approved'`, [req.params.id])).rows[0];
   if (!p) return bad(res, 'Product not found', 404);
   p.related = (await db.query(
     `SELECT id,name,price,old_price,(image IS NOT NULL) AS img,image_v FROM products
-     WHERE store_id=$1 AND active AND id<>$2 ORDER BY id DESC LIMIT 8`, [p.store_id, p.id])).rows;
+     WHERE store_id=$1 AND active AND (stock IS NULL OR stock>0) AND id<>$2 ORDER BY id DESC LIMIT 8`, [p.store_id, p.id])).rows;
   res.json(p);
 }));
 
@@ -222,17 +222,29 @@ app.post('/api/orders', orderLimit, ah(async (req, res) => {
   const s = (await db.query("SELECT id,name,whatsapp FROM stores WHERE id=$1 AND status='approved'", [store_id])).rows[0];
   if (!s) return bad(res, 'Store not available', 404);
   const ids = items.map(i => parseInt(i.product_id, 10)).filter(Number.isInteger);
-  const ps = (await db.query('SELECT id,name,price FROM products WHERE store_id=$1 AND active AND id=ANY($2::int[])', [s.id, ids])).rows;
-  let total = 0; const lines = [], snap = [];
+  const ps = (await db.query('SELECT id,name,price,stock FROM products WHERE store_id=$1 AND active AND id=ANY($2::int[])', [s.id, ids])).rows;
+  let total = 0; const lines = [], snap = [], take = {};
   for (const i of items) {
     const p = ps.find(x => x.id === parseInt(i.product_id, 10)), q = Math.floor(Number(i.qty));
     if (!p || !(q >= 1 && q <= 100)) return bad(res, 'An item in your cart is no longer available');
+    if (p.stock !== null && p.stock <= 0) return bad(res, `${p.name} is sold out. Remove it from your cart to continue.`);
+    take[p.id] = (take[p.id] || 0) + q;
+    if (p.stock !== null && take[p.id] > p.stock) return bad(res, `Only ${p.stock} of ${p.name} left. Please lower the quantity.`);
     total += p.price * q; snap.push({ name: p.name, price: p.price, qty: q });
     lines.push(`- ${q} x ${p.name} (${ngn(p.price * q)})`);
   }
   const buyer = String(name || '').trim().slice(0, 80), loc = String(location || '').trim().slice(0, 160);
-  await db.query('INSERT INTO orders(store_id,buyer_name,buyer_location,items,total) VALUES($1,$2,$3,$4,$5)',
-    [s.id, buyer, loc, JSON.stringify(snap), total]);
+  const c = await db.connect();
+  try {   // save the order and take the pieces out of stock together; the guard stops two buyers taking the last piece
+    await c.query('BEGIN');
+    for (const id in take) {
+      const r = await c.query('UPDATE products SET stock=stock-$2 WHERE id=$1 AND stock IS NOT NULL AND stock>=$2', [id, take[id]]);
+      const p = ps.find(x => x.id === Number(id));
+      if (!r.rowCount && p.stock !== null) { await c.query('ROLLBACK'); return bad(res, `${p.name} just sold out or has fewer pieces left. Please refresh and try again.`, 409); }
+    }
+    await c.query('INSERT INTO orders(store_id,buyer_name,buyer_location,items,total) VALUES($1,$2,$3,$4,$5)', [s.id, buyer, loc, JSON.stringify(snap), total]);
+    await c.query('COMMIT');
+  } catch (e) { await c.query('ROLLBACK').catch(() => {}); throw e; } finally { c.release(); }
   const text = [`Hello ${s.name}, I'd like to order from Ido-Osun Market:`, ...lines, `Total: ${ngn(total)}`,
     buyer && `Name: ${buyer}`, loc && `Delivery/pickup: ${loc}`].filter(Boolean).join('\n');
   notify(s.id, text);
@@ -242,10 +254,11 @@ app.post('/api/orders', orderLimit, ah(async (req, res) => {
 
 /* ---------- vendor dashboard ---------- */
 const mine = `(SELECT id FROM stores WHERE owner_id=$1)`;
+const pieces = v => { const n = Number(v); return v !== '' && v !== null && v !== undefined && Number.isInteger(n) && n >= 0 && n <= 1000000 ? n : null; };
 app.get('/api/vendor/store', need('vendor'), ah(async (req, res) => {
   const s = (await db.query('SELECT id,name,description,category,location,whatsapp,status,(image IS NOT NULL) AS img,image_v FROM stores WHERE owner_id=$1', [req.user.id])).rows[0];
   if (!s) return bad(res, 'No store found', 404);
-  s.products = (await db.query('SELECT id,name,price,old_price,description,active,(image IS NOT NULL) AS img,image_v FROM products WHERE store_id=$1 ORDER BY id', [s.id])).rows;
+  s.products = (await db.query('SELECT id,name,price,old_price,description,active,stock,(image IS NOT NULL) AS img,image_v FROM products WHERE store_id=$1 ORDER BY id', [s.id])).rows;
   res.json(s);
 }));
 
@@ -262,9 +275,11 @@ app.post('/api/vendor/products', need('vendor'), ah(async (req, res) => {
   const raw = req.body.old_price, hasOld = !(raw === undefined || raw === null || raw === '');
   const old = hasOld ? money(raw) : null;
   if (!name || price === null) return bad(res, 'Enter a product name and a valid price');
+  const stock = pieces(req.body.stock);
+  if (stock === null || stock < 1) return bad(res, 'Enter how many pieces are available (1 or more)');
   if (hasOld && (old === null || old <= price)) return bad(res, 'Old price must be higher than the price');
-  const r = await db.query('INSERT INTO products(store_id,name,price,old_price,description) SELECT id,$2,$3,$4,$5 FROM stores WHERE owner_id=$1 RETURNING id',
-    [req.user.id, name, price, old, String(req.body.description || '').trim().slice(0, 500)]);
+  const r = await db.query('INSERT INTO products(store_id,name,price,old_price,description,stock) SELECT id,$2,$3,$4,$5,$6 FROM stores WHERE owner_id=$1 RETURNING id',
+    [req.user.id, name, price, old, String(req.body.description || '').trim().slice(0, 500), stock]);
   r.rowCount ? res.json({ id: r.rows[0].id }) : bad(res, 'No store found', 404);
 }));
 
@@ -274,6 +289,8 @@ app.put('/api/vendor/products/:id', need('vendor'), ah(async (req, res) => {
   if (b.name !== undefined) { const n = String(b.name).trim().slice(0, 100); if (!n) return bad(res, 'Name cannot be empty'); add('name', n); }
   if (b.price !== undefined) { const p = money(b.price); if (p === null) return bad(res, 'Invalid price'); add('price', p); }
   if (typeof b.active === 'boolean') add('active', b.active);
+  if (b.sold_out === true) add('stock', 0);   // mark sold out: hidden from the public pages until restocked
+  else if (b.stock !== undefined) { const n = pieces(b.stock); if (n === null) return bad(res, 'Enter a whole number of pieces (0 or more)'); add('stock', n); }
   if (b.description !== undefined) add('description', String(b.description).trim().slice(0, 500));
   if (b.old_price !== undefined) {
     const none = b.old_price === null || b.old_price === '', o = none ? null : money(b.old_price);

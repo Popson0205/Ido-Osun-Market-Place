@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ido-Osun Market poster</title>
+<style>
+@page{size:A4;margin:12mm}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#1d2b24;background:#f4f8f2}
+.p{max-width:760px;margin:0 auto;padding:28px;text-align:center}
+h1{font-size:2.4rem;margin:0;color:#2f5d50}
+.sub{font-size:1.2rem;margin:8px 0 24px}
+.qs{display:flex;gap:24px;justify-content:center;flex-wrap:wrap}
+.q{background:#fff;border:3px solid #2f5d50;border-radius:20px;padding:16px;width:300px}
+.q img{width:100%;height:auto;display:block}
+.q b{display:block;font-size:1.25rem;margin-top:8px;color:#2f5d50}
+.foot{margin-top:24px;font-size:1.05rem}
+button{margin:18px 0;padding:12px 22px;border:0;border-radius:999px;background:#2f5d50;color:#fff;font-size:1rem;cursor:pointer}
+@media print{button{display:none}body{background:#fff}}
+</style></head>
+<body><div class="p">
+<h1>🌿 Ido-Osun Market</h1>
+<p class="sub">Shop local. Sell digital. Order straight on WhatsApp.</p>
+<div class="qs">
+  <div class="q"><img id="a" alt="QR code to browse stores"><b>Scan to shop</b></div>
+  <div class="q"><img id="b" alt="QR code to become a vendor"><b>Scan to sell</b></div>
+</div>
+<p class="foot" id="u"></p>
+<button onclick="window.print()">Print poster</button>
+</div>
+<script>
+var o=location.origin;
+document.getElementById("a").src="/qr.svg?u="+encodeURIComponent(o+"/#/");
+document.getElementById("b").src="/qr.svg?u="+encodeURIComponent(o+"/#/register");
+document.getElementById("u").textContent=o.replace(/^https?:\/\//,"");
+</script></body></html>

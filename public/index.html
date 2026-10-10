@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#2f5d50">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <title>Ido-Osun Market</title>
 <style>
 :root{--bg:#f4f8f2;--card:#fbfdf9;--inp:#e6f0e2;--ink:#1d2b24;--mute:#5f7068;--g:#2f5d50;--gt:#fff;--chip:#e6f0e2;--line:#dde7d9;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -41,6 +43,8 @@ footer{background:#1d2b24;color:#e9f1ec;padding:20px;text-align:center;font-size
 #msg{color:var(--g);font-size:.9rem;margin:8px 0 0}
 .cover{overflow:hidden}.cover img{width:100%;height:100%;object-fit:cover}
 .th{width:56px;height:56px;border-radius:12px;background:var(--inp);display:flex;align-items:center;justify-content:center;font-size:1.6rem;overflow:hidden;flex:none}.th img{width:100%;height:100%;object-fit:cover}
+.card ul{padding-left:20px;margin:6px 0}.card li{margin:4px 0}
+footer a{color:#e9f1ec;margin:0 8px;display:inline-block;padding:4px 0;text-decoration:none}
 </style>
 </head>
 <body>
@@ -48,11 +52,11 @@ footer{background:#1d2b24;color:#e9f1ec;padding:20px;text-align:center;font-size
   <a class="brand" href="#/">🌿 Ido-Osun Market</a>
   <button class="ic" id="bt" title="Theme">🌙</button>
   <button class="ic" id="bc" title="Cart">🛒<b id="cn">0</b></button>
-  <button class="ic" id="ba" title="Account">👤</button>
+  <button class="ic" id="ba" title="Account">👤<b id="ab" style="display:none">0</b></button>
 </div>
 <main id="app"></main>
 <input type="file" id="pf" accept="image/*" hidden>
-<footer>© 2026 Ido-Osun Market · Launching with the Ido-Osun Digital Summit</footer>
+<footer><a href="#/about">About us</a><a href="#/safety">Safety tips</a><a href="#/faq">FAQ</a><a href="#/terms">Terms of service</a><a href="#/privacy">Privacy policy</a><a href="#/contact">Contact us</a><a id="fwa" href="#/contact" target="_blank" rel="noopener" class="hide">WhatsApp</a><a href="#" id="inst" class="hide">Install app</a><div style="margin-top:10px">© 2026 Ido-Osun Market · Launching with the Ido-Osun Digital Summit</div></footer>
 <script>
 var CATS=["Fresh Produce","Food","Fashion","Beads & Crafts","Pre-owned","Services","General"];
 var $=function(i){return document.getElementById(i)};
@@ -81,7 +85,7 @@ V.stores=async function(){ST=await api("/stores");
   ["All"].concat(CATS).map(function(c){return '<button class="chip'+(c===cat?' on':'')+'" data-cat="'+esc(c)+'">'+esc(c)+'</button>'}).join("")+'</div></div><div id="list">'+list()+'</div>'};
 V.store=async function(id){var s=await api("/stores/"+encodeURIComponent(id));
   return '<a href="#/" class="m">← All stores</a><div class="card" style="margin-top:10px"><div class="cover">'+pic("store",s,emoji[s.category]||"🛍️")+'</div><h1>'+esc(s.name)+'</h1><p class="m">'+esc(s.description||"")+'</p><span class="tag">'+esc(s.category)+'</span><span class="tag">📍 '+esc(s.location||"Ido-Osun")+'</span><a class="btn wa" target="_blank" rel="noopener" href="https://wa.me/'+esc(s.whatsapp)+'">Chat with vendor on WhatsApp</a></div>'+
-  '<div class="card"><h2>Products</h2>'+(s.products.map(function(p){return '<div class="row"><div class="th">'+pic("product",p,"🛍️")+'</div><div style="flex:1">'+esc(p.name)+'<div class="price">'+ngn(p.price)+'</div></div><button class="btn sm" data-add="'+p.id+'" data-s="'+s.id+'" data-sn="'+esc(s.name)+'" data-n="'+esc(p.name)+'" data-p="'+p.price+'">Add</button></div>'}).join("")||'<p class="m">No products listed yet.</p>')+'</div>'};
+  '<div class="card"><h2>Products</h2>'+(s.products.map(function(p){return '<div class="row"><div class="th">'+pic("product",p,"🛍️")+'</div><div style="flex:1">'+esc(p.name)+'<div class="price">'+ngn(p.price)+'</div></div><button class="btn sm" data-add="'+p.id+'" data-s="'+s.id+'" data-sn="'+esc(s.name)+'" data-n="'+esc(p.name)+'" data-p="'+p.price+'">Add</button></div>'}).join("")||'<p class="m">No products listed yet.</p>')+'</div><div class="card"><button class="btn sm alt" data-rp="1">🚩 Report this store</button><div id="rf" class="hide"><label>What is wrong?</label><select id="rr"><option>Fake or misleading listing</option><option>Did not deliver after payment</option><option>Prohibited item</option><option>Harassment or abuse</option><option>Other</option></select><label>Details (optional)</label><textarea id="rd" rows="3"></textarea><button class="btn" data-rs="'+s.id+'">Send report</button><p id="msg"></p></div></div>'};
 V.cart=async function(){
   var g={};Object.keys(cart).forEach(function(k){(g[cart[k].s]=g[cart[k].s]||[]).push(k)});var ids=Object.keys(g);
   if(!ids.length)return '<div class="card"><h1>Your cart</h1><p class="m">Your cart is empty.</p><a class="btn" href="#/">Browse stores</a></div>';
@@ -95,18 +99,29 @@ V.register=async function(){return '<div class="card"><h1>Create your account</h
   '<button class="btn" id="go">Create account</button><p id="msg"></p><p class="m" style="text-align:center">Already registered? <a href="#/login">Login</a></p></div>'};
 V.me=async function(){if(!user){location.hash="#/login";return ""}
   return '<div class="card"><h1>Hi, '+esc(user.first)+'</h1>'+(user.role==="vendor"?'<a class="btn" href="#/dash">My store dashboard</a>':'')+(user.role==="admin"?'<a class="btn" href="#/admin">Approve vendors</a>':'')+'<button class="btn alt" id="out">Log out</button></div>'};
-V.dash=async function(){var s=await api("/vendor/store"),o=await api("/vendor/orders");
+V.dash=async function(){var s=await api("/vendor/store"),o=await api("/vendor/orders");await api("/vendor/orders/seen",{m:"POST"}).catch(function(){});
   return '<div class="card"><h1>'+esc(s.name)+'</h1><span class="tag">'+esc(s.status)+'</span><div class="cover" style="height:140px;margin:10px 0 0;border-radius:16px">'+pic("store",s,"🛍️")+'</div><button class="btn sm alt" data-ph="store">Change store photo</button>'+(s.status!=="approved"?'<p class="m">Your store is waiting for approval. It appears publicly once approved.</p>':'')+
   '<label>Shop name</label><input id="sn" value="'+esc(s.name)+'"><label>Description</label><textarea id="sd" rows="3">'+esc(s.description)+'</textarea><label>Category</label><select id="sc">'+opts(s.category)+'</select><label>Location</label><input id="sl" value="'+esc(s.location)+'"><label>WhatsApp number</label><input id="sw" type="tel" value="'+esc(s.whatsapp)+'"><button class="btn" id="ss">Save store</button><p id="msg"></p></div>'+
   '<div class="card"><h2>Products</h2>'+s.products.map(function(p){return '<div class="row"><div class="th">'+pic("product",p,"🛍️")+'</div><div style="flex:1">'+esc(p.name)+'<div class="price">'+ngn(p.price)+(p.active?'':' (hidden)')+'</div></div><div><button class="btn sm alt" data-ph="'+p.id+'">Photo</button><button class="btn sm alt" data-ep="'+p.id+'" data-pr="'+p.price+'">Price</button><button class="btn sm alt" data-tp="'+p.id+'" data-a="'+p.active+'">'+(p.active?"Hide":"Show")+'</button><button class="btn sm alt" data-dp="'+p.id+'">✕</button></div></div>'}).join("")+
   '<label>New product</label><input id="pn" placeholder="Name"><input id="pp" type="number" min="0" placeholder="Price in ₦" style="margin-top:8px"><button class="btn" id="ap">Add product</button></div>'+
-  '<div class="card"><h2>Recent orders</h2>'+(o.map(function(r){return '<div class="row"><div><strong>'+esc(r.buyer_name||"No name")+'</strong> <span class="m">'+new Date(r.created_at).toLocaleDateString("en-NG")+'</span><br><span class="m">'+r.items.map(function(i){return esc(i.qty+" x "+i.name)}).join(", ")+'</span></div><div class="price">'+ngn(r.total)+'</div></div>'}).join("")||'<p class="m">No orders yet.</p>')+'</div>'};
-V.admin=async function(){var l=await api("/admin/stores");
-  return '<div class="card"><h1>Vendor approvals</h1></div>'+l.map(function(s){return '<div class="card"><h2>'+esc(s.name)+'</h2><span class="tag">'+esc(s.status)+'</span><p class="m">'+esc(s.category)+' · '+esc(s.location||"")+'<br>'+esc(s.email)+' · WhatsApp '+esc(s.whatsapp)+'</p><button class="btn sm" data-ad="approve-'+s.id+'">Approve</button><button class="btn sm alt" data-ad="reject-'+s.id+'">Reject</button><button class="btn sm alt" data-ad="suspend-'+s.id+'">Suspend</button></div>'}).join("")};
+  '<div class="card"><h2>Recent orders</h2>'+(o.map(function(r){return '<div class="row"><div>'+(r.seen?'':'<span class="tag" style="background:var(--g);color:var(--gt)">NEW</span> ')+'<strong>'+esc(r.buyer_name||"No name")+'</strong> <span class="m">'+new Date(r.created_at).toLocaleDateString("en-NG")+'</span><br><span class="m">'+r.items.map(function(i){return esc(i.qty+" x "+i.name)}).join(", ")+'</span></div><div class="price">'+ngn(r.total)+'</div></div>'}).join("")||'<p class="m">No orders yet.</p>')+'</div>'};
+V.admin=async function(){var l=await api("/admin/stores"),rp=await api("/admin/reports");
+  return '<div class="card"><h1>Open reports ('+rp.length+')</h1>'+(rp.map(function(r){return '<div class="row"><div><strong>'+esc(r.store_name)+'</strong><br><span class="m">'+esc(r.reason)+(r.details?": "+esc(r.details):"")+'</span><div><button class="btn sm alt" data-rv="'+r.id+'">Resolve</button><button class="btn sm alt" data-ad="suspend-'+r.store_id+'">Suspend store</button></div></div></div>'}).join("")||'<p class="m">No open reports.</p>')+'</div><div class="card"><h1>Vendor approvals</h1></div>'+l.map(function(s){return '<div class="card"><h2>'+esc(s.name)+'</h2><span class="tag">'+esc(s.status)+'</span><p class="m">'+esc(s.category)+' · '+esc(s.location||"")+'<br>'+esc(s.email)+' · WhatsApp '+esc(s.whatsapp)+'</p><button class="btn sm" data-ad="approve-'+s.id+'">Approve</button><button class="btn sm alt" data-ad="reject-'+s.id+'">Reject</button><button class="btn sm alt" data-ad="suspend-'+s.id+'">Suspend</button></div>'}).join("")};
+var PG={
+about:["About Ido-Osun Market",function(){return '<p>Ido-Osun Market is a community marketplace launched with the Ido-Osun Digital Summit. It helps local farmers, makers, traders and service providers put their shops online and reach more buyers.</p><p>Browse stores, add items to your cart, and send your order straight to the vendor on WhatsApp. The vendor confirms availability, price and delivery with you there.</p>'}],
+safety:["Safety tips",function(){return '<h2>Buyers</h2><ul><li>Confirm the item, price and delivery cost with the vendor on WhatsApp before you pay.</li><li>Prefer pay on delivery or pickup, especially for a first order.</li><li>Meet in a public place for pickups and for pre-owned items.</li><li>Check the item before you hand over money.</li><li>Never share your password, OTP codes or bank PIN with anyone, including vendors.</li><li>Use the Report button on a store page if something looks wrong.</li></ul><h2>Vendors</h2><ul><li>List only items you really have, with honest prices and photos.</li><li>Reply to orders quickly and confirm stock before taking payment.</li><li>Keep proof of delivery or pickup.</li><li>Do not sell illegal, counterfeit or dangerous items. Stores that do will be removed.</li></ul>'}],
+faq:["Frequently asked questions",function(){return '<h2>How do I order?</h2><p>Add items to your cart, enter your name and delivery location, then tap "Order on WhatsApp". Your order opens in WhatsApp, ready to send to the vendor.</p><h2>Do I pay on this site?</h2><p>No. You agree payment and delivery directly with the vendor on WhatsApp.</p><h2>How do I become a vendor?</h2><p>Register and turn on "Are you registering as a vendor?". Add your shop name and WhatsApp number.</p><h2>Why is my store not showing?</h2><p>New stores are reviewed first. Your dashboard shows "pending" until your store is approved.</p><h2>Something went wrong with an order</h2><p>Talk to the vendor first. If you cannot resolve it, use the Report button on the store page.</p>'}],
+terms:["Terms of service",function(){return '<p class="m">Last updated October 2026</p><p>By using Ido-Osun Market you agree to these terms.</p><h2>What we do</h2><p>Ido-Osun Market is a platform that lets buyers find local vendors. We do not sell the items, hold your money, or deliver anything. Each order is agreed and paid for directly between the buyer and the vendor, usually on WhatsApp.</p><h2>Accounts</h2><p>Give true information and keep your password private. You are responsible for activity on your account.</p><h2>Vendors</h2><ul><li>Listings, prices and photos must be accurate and belong to you.</li><li>You must honour the price and details you agree with a buyer.</li><li>No illegal, stolen, counterfeit, dangerous or adult items.</li><li>New vendors are reviewed before their store appears publicly.</li></ul><h2>Buyers</h2><p>Check items and agree delivery and payment details with the vendor before paying. Use the Report button if something goes wrong.</p><h2>Removal</h2><p>We may hide, suspend or remove stores or accounts that break these terms or receive serious complaints.</p><h2>Liability</h2><p>Because transactions happen between buyers and vendors, we are not responsible for the quality, delivery or payment of items, to the extent the law allows.</p><h2>Changes</h2><p>We may update these terms. Continued use means you accept the updated terms.</p>'}],
+privacy:["Privacy policy",function(){return '<p class="m">Last updated October 2026</p><p>We collect only what the marketplace needs.</p><h2>What we collect</h2><ul><li>Account details: name, email and an encrypted (hashed) password, plus an optional referral code.</li><li>Vendors: shop name, description, location, WhatsApp number, photos and products.</li><li>Orders: the items, total, and the name and delivery location you type when ordering.</li></ul><h2>How we use it</h2><ul><li>To run your account and show approved stores.</li><li>To pass your order, name and delivery location to the vendor you order from, by WhatsApp and in their dashboard.</li><li>To keep the marketplace safe, including reviewing reports.</li></ul><h2>Sharing</h2><p>We do not sell your data. A vendor WhatsApp number is shown to buyers so they can chat. Vendors receive the order details you choose to send. Our hosting provider stores the data for us.</p><h2>Your choices</h2><p>You can ask us to correct or delete your account through the Contact page.</p>'}],
+contact:["Contact us",function(){return CFG.whatsapp?'<p>Questions, problems or account requests? Message us on WhatsApp.</p><a class="btn wa" target="_blank" rel="noopener" href="https://wa.me/'+esc(CFG.whatsapp)+'">Chat with us on WhatsApp</a>':'<p>Contact details will be added soon. For an order problem, message the vendor or use the Report button on the store page.</p>'}]
+};
+Object.keys(PG).forEach(function(k){V[k]=async function(){return '<div class="card"><h1>'+PG[k][0]+'</h1>'+PG[k][1]()+'</div>'}});
+var CFG={whatsapp:""},ip=null;
+function poll(){if(!tok||!user||user.role!=="vendor"){$("ab").style.display="none";return}api("/vendor/orders/unread").then(function(r){$("ab").textContent=r.n;$("ab").style.display=r.n?"":"none"}).catch(function(){})}
 async function route(){var h=location.hash.replace("#/","").split("/"),f=V[h[0]||"stores"]||V.stores;
   $("app").innerHTML='<p class="m">Loading…</p>';
   try{$("app").innerHTML=await f(h[1])}catch(e){$("app").innerHTML='<div class="card"><p class="m">'+esc(e.message)+'</p><a class="btn" href="#/">Back to stores</a></div>'}
-  window.scrollTo(0,0)}
+  window.scrollTo(0,0);poll()}
 async function act(fn){try{await fn()}catch(e){fail(e)}}
 function login(r){tok=r.token;user=r.user;sv("t",tok);sv("u",user);location.hash=user.role==="vendor"?"#/dash":"#/"}
 document.addEventListener("click",function(e){
@@ -130,6 +145,9 @@ document.addEventListener("click",function(e){
   if(d.tp)act(async function(){await api("/vendor/products/"+d.tp,{m:"PUT",b:{active:d.a!=="true"}});route()});
   if(d.dp&&confirm("Delete this product?"))act(async function(){await api("/vendor/products/"+d.dp,{m:"DELETE"});route()});
   if(d.ph){pend=d.ph;$("pf").value="";$("pf").click()}
+  if(d.rp)$("rf").classList.toggle("hide");
+  if(d.rs)act(async function(){await api("/reports",{m:"POST",b:{store_id:d.rs,reason:$("rr").value,details:$("rd").value}});$("msg").textContent="Thank you. Our team will review this report.";t.disabled=true});
+  if(d.rv)act(async function(){await api("/admin/reports/"+d.rv+"/resolve",{m:"POST"});route()});
   if(d.ad)act(async function(){var a=d.ad.split("-");await api("/admin/stores/"+a[1]+"/"+a[0],{m:"POST"});route()});
 });
 document.addEventListener("input",function(e){
@@ -142,7 +160,12 @@ $("pf").onchange=function(){var f=this.files[0];if(!f||!pend)return;act(async fu
 $("bt").onclick=function(){var r=document.documentElement,d=r.getAttribute("data-theme")==="dark"||(!r.getAttribute("data-theme")&&matchMedia("(prefers-color-scheme:dark)").matches);r.setAttribute("data-theme",d?"light":"dark")};
 $("bc").onclick=function(){location.hash="#/cart"};
 $("ba").onclick=function(){location.hash=user?"#/me":"#/login"};
-window.addEventListener("hashchange",route);count();route();
+addEventListener("beforeinstallprompt",function(e){e.preventDefault();ip=e;$("inst").classList.remove("hide")});
+$("inst").onclick=function(ev){ev.preventDefault();if(ip){ip.prompt();ip=null;$("inst").classList.add("hide")}};
+window.addEventListener("hashchange",route);count();
+api("/config").then(function(c){CFG=c;if(c.whatsapp){var f=$("fwa");f.href="https://wa.me/"+c.whatsapp;f.classList.remove("hide")}}).catch(function(){}).then(route);
+setInterval(poll,60000);
+if("serviceWorker" in navigator)navigator.serviceWorker.register("/sw.js").catch(function(){});
 </script>
 </body>
 </html>

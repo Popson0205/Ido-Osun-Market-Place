@@ -16,6 +16,15 @@ Register on the site with the exact email set in `ADMIN_EMAIL`. That account get
 - **Vendor dashboard:** edit store details, add/hide/delete products, change prices, see recent orders.
 - **Ordering:** the cart is grouped by store. The server recomputes prices from the database, saves the order, and returns a `wa.me` link to that vendor's number with the order text. The vendor sees it in their dashboard too.
 
+## Order alerts
+Vendors see a badge on the account icon and a NEW tag on fresh orders in their dashboard. For email alerts too, create a free account at resend.com, verify your sending address, and set `RESEND_API_KEY` and `MAIL_FROM`. Without them the app simply skips email.
+
+## Safety pages and reports
+The footer links to About, Safety tips, FAQ, Terms of service, Privacy policy and Contact. Set `ADMIN_WHATSAPP` so the Contact page and footer show your WhatsApp number. Each store has a "Report this store" button; reports appear at the top of the admin screen with Resolve and Suspend store buttons. The terms and privacy texts are a plain-language starting point: have a lawyer review them before launch and edit them in `public/index.html` (`PG` object).
+
+## Install app and QR poster
+The site is installable on phones (an "Install app" link appears in the footer when the browser allows it). Open `/poster.html` on your live domain to print a poster with two QR codes: one to shop, one to register as a vendor.
+
 ## Photos
 Vendors add a store photo and a photo per product from their dashboard. The browser shrinks each photo to about 900px JPEG (under 400 KB) before upload, and the server keeps it in PostgreSQL, so no extra storage service or Railway volume is needed. This is fine for hundreds of products; if you grow to thousands, move images to Cloudflare R2 or S3.
 
@@ -33,4 +42,4 @@ Vendors add a store photo and a photo per product from their dashboard. The brow
 If the app logs a database SSL error, set `DB_SSL` to `true` or `false` to match your database.
 
 ## Not included yet
-password reset, email verification, Google sign-in, online payments, and delivery tracking. The referral code is stored but not used for rewards.
+password reset, email verification, Google sign-in, and delivery tracking. The referral code is stored but not used for rewards.

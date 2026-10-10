@@ -2,6 +2,7 @@ require('dotenv').config();
 const fs = require('fs'), path = require('path');
 const express = require('express'), helmet = require('helmet'), rateLimit = require('express-rate-limit');
 const { Pool } = require('pg'), bcrypt = require('bcryptjs'), jwt = require('jsonwebtoken');
+const QRCode = require('qrcode');
 
 const { DATABASE_URL, JWT_SECRET, ADMIN_EMAIL = '' } = process.env;
 if (!DATABASE_URL || !JWT_SECRET || JWT_SECRET.length < 24) {
@@ -87,6 +88,22 @@ app.get('/api/stores/:id', ah(async (req, res) => {
   res.json(s);
 }));
 
+/* ---------- order alerts: optional email to the vendor (set RESEND_API_KEY and MAIL_FROM) ---------- */
+async function notify(storeId, subject, body) {
+  const { RESEND_API_KEY, MAIL_FROM } = process.env;
+  if (!RESEND_API_KEY || !MAIL_FROM) return;
+  try {
+    const u = (await db.query('SELECT u.email FROM stores s JOIN users u ON u.id=s.owner_id WHERE s.id=$1', [storeId])).rows[0];
+    if (!u) return;
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: MAIL_FROM, to: [u.email], subject, text: body }),
+    });
+    if (!r.ok) console.error('order email failed', r.status);
+  } catch (e) { console.error('order email failed', e.message); }
+}
+
 /* ---------- orders: prices come from the database, never the browser ---------- */
 app.post('/api/orders', orderLimit, ah(async (req, res) => {
   const { store_id, items, name, location } = req.body;
@@ -107,6 +124,7 @@ app.post('/api/orders', orderLimit, ah(async (req, res) => {
     [s.id, buyer, loc, JSON.stringify(snap), total]);
   const text = [`Hello ${s.name}, I'd like to order from Ido-Osun Market:`, ...lines, `Total: ${ngn(total)}`,
     buyer && `Name: ${buyer}`, loc && `Delivery/pickup: ${loc}`].filter(Boolean).join('\n');
+  notify(s.id, 'New order on Ido-Osun Market', text);
   res.json({ url: `https://wa.me/${s.whatsapp}?text=${encodeURIComponent(text)}` });
 }));
 
@@ -148,8 +166,16 @@ app.delete('/api/vendor/products/:id', need('vendor'), ah(async (req, res) => {
 }));
 
 app.get('/api/vendor/orders', need('vendor'), ah(async (req, res) => {
-  res.json((await db.query(`SELECT id,buyer_name,buyer_location,items,total,created_at FROM orders
+  res.json((await db.query(`SELECT id,buyer_name,buyer_location,items,total,created_at,seen FROM orders
     WHERE store_id=${mine} ORDER BY id DESC LIMIT 100`, [req.user.id])).rows);
+}));
+
+app.get('/api/vendor/orders/unread', need('vendor'), ah(async (req, res) => {
+  res.json({ n: (await db.query(`SELECT count(*)::int AS n FROM orders WHERE NOT seen AND store_id=${mine}`, [req.user.id])).rows[0].n });
+}));
+app.post('/api/vendor/orders/seen', need('vendor'), ah(async (req, res) => {
+  await db.query(`UPDATE orders SET seen=true WHERE NOT seen AND store_id=${mine}`, [req.user.id]);
+  res.json({ ok: true });
 }));
 
 /* ---------- photos (stored in Postgres; the browser shrinks them first) ---------- */
@@ -184,6 +210,33 @@ app.post('/api/admin/stores/:id/:action', need('admin'), ah(async (req, res) => 
   if (!st) return bad(res, 'Unknown action');
   await db.query('UPDATE stores SET status=$2 WHERE id=$1', [req.params.id, st]);
   res.json({ ok: true });
+}));
+
+/* ---------- public config, reports, QR codes ---------- */
+app.get('/api/config', (req, res) => res.json({ whatsapp: (process.env.ADMIN_WHATSAPP || '').replace(/\D/g, '') }));
+
+const REASONS = ['Fake or misleading listing', 'Did not deliver after payment', 'Prohibited item', 'Harassment or abuse', 'Other'];
+app.post('/api/reports', orderLimit, ah(async (req, res) => {
+  const { store_id, reason, details } = req.body;
+  if (!REASONS.includes(reason)) return bad(res, 'Choose a reason');
+  const r = await db.query("INSERT INTO reports(store_id,reason,details) SELECT id,$2,$3 FROM stores WHERE id=$1 AND status='approved' RETURNING id",
+    [store_id, reason, String(details || '').slice(0, 500)]);
+  r.rowCount ? res.json({ ok: true }) : bad(res, 'Store not found', 404);
+}));
+app.get('/api/admin/reports', need('admin'), ah(async (req, res) => {
+  res.json((await db.query(`SELECT r.id,r.store_id,r.reason,r.details,r.created_at,s.name AS store_name
+    FROM reports r JOIN stores s ON s.id=r.store_id WHERE NOT r.resolved ORDER BY r.id DESC LIMIT 200`)).rows);
+}));
+app.post('/api/admin/reports/:id/resolve', need('admin'), ah(async (req, res) => {
+  await db.query('UPDATE reports SET resolved=true WHERE id=$1', [req.params.id]);
+  res.json({ ok: true });
+}));
+
+app.get('/qr.svg', ah(async (req, res) => {
+  const u = String(req.query.u || '');
+  if (!/^https?:\/\//.test(u) || u.length > 300) return bad(res, 'Invalid URL');
+  res.type('image/svg+xml').set('Cache-Control', 'public, max-age=86400')
+    .send(await QRCode.toString(u, { type: 'svg', margin: 1, width: 600 }));
 }));
 
 /* ---------- static site + errors ---------- */

@@ -76,7 +76,7 @@ app.post('/api/auth/register', authLimit, ah(async (req, res) => {
     await c.query('COMMIT');
     if (v) {   // emails never block sign-up
       mailer.send({ to: email, ...mailer.tpl.welcomeVendor(String(v.shop).trim(), link('/#/dash')) });
-      if (ADMIN_EMAIL) mailer.send({ to: ADMIN_EMAIL, ...mailer.tpl.adminNewVendor(String(v.shop).trim(), `${b.first} ${b.last}`, email, wa, link('/#/admin')) });
+      if (ADMIN_EMAIL) mailer.send({ to: ADMIN_EMAIL, ...mailer.tpl.adminNewVendor(String(v.shop).trim(), `${b.first} ${b.last}`, email, wa, link('/admin')) });
     }
     res.json({ token: sign(u), user: { first: u.first, role: u.role } });
   } catch (e) {
@@ -394,6 +394,7 @@ app.post('/api/admin/demo/load', need('admin'), ah(async (req, res) => {
 app.post('/api/admin/demo/clear', need('admin'), ah(async (req, res) => res.json({ removed: await demo.clear(db) })));
 
 /* ---------- static site + errors ---------- */
+app.get('/admin', (req, res) => { res.set('Cache-Control', 'no-store'); res.sendFile(path.join(__dirname, 'public', 'admin.html')); });   // separate admin site
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/api', (req, res) => bad(res, 'Not found', 404));
 app.use((e, req, res, next) => {

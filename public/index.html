@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2f5d50">
+<title>Ido-Osun Market</title>
+<style>
+:root{--bg:#f4f8f2;--card:#fbfdf9;--inp:#e6f0e2;--ink:#1d2b24;--mute:#5f7068;--g:#2f5d50;--gt:#fff;--chip:#e6f0e2;--line:#dde7d9;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17221d;--card:#1f2d26;--inp:#2a3b33;--ink:#e9f1ec;--mute:#9db0a5;--g:#4f8f7b;--chip:#2a3b33;--line:#2f4238}}
+:root[data-theme="dark"]{--bg:#17221d;--card:#1f2d26;--inp:#2a3b33;--ink:#e9f1ec;--mute:#9db0a5;--g:#4f8f7b;--chip:#2a3b33;--line:#2f4238}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.top{display:flex;align-items:center;gap:8px;padding:12px 16px;position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);z-index:5}
+.brand{font-weight:800;font-size:1.1rem;color:var(--g);margin-right:auto;text-decoration:none}
+.ic{width:42px;height:42px;border-radius:50%;border:0;background:var(--chip);color:var(--ink);font-size:1.1rem;cursor:pointer;position:relative}
+.ic b{position:absolute;top:-3px;right:-3px;background:var(--g);color:var(--gt);border-radius:999px;font-size:.7rem;padding:2px 6px}
+main{max-width:640px;margin:0 auto;padding:4px 16px 24px;min-height:60vh}
+.card{background:var(--card);border-radius:24px;padding:20px;margin-bottom:16px;box-shadow:0 6px 24px rgba(0,0,0,.06)}
+h1,h2{margin:0 0 6px}h1{font-size:1.5rem}h2{font-size:1.2rem}
+.m{color:var(--mute)}
+label{display:block;font-size:.9rem;margin:12px 0 6px}
+label i{color:#d33;font-style:normal}
+input,select,textarea{width:100%;border:0;background:var(--inp);color:var(--ink);padding:14px;border-radius:14px;font-size:1rem;font-family:inherit}
+.btn{display:block;width:100%;background:var(--g);color:var(--gt);border:0;border-radius:999px;padding:14px;font-size:1rem;font-weight:600;cursor:pointer;text-align:center;text-decoration:none;margin-top:14px}
+.btn.alt{background:var(--chip);color:var(--ink)}
+.btn.wa{background:#1fa855;color:#fff}
+.btn.sm{padding:9px 13px;width:auto;display:inline-block;margin:4px 4px 0 0;font-size:.9rem}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 12px}
+.chip{flex:none;background:var(--chip);color:var(--ink);border:0;border-radius:999px;padding:8px 14px;cursor:pointer}
+.chip.on{background:var(--g);color:var(--gt)}
+.cover{height:110px;border-radius:24px 24px 0 0;display:flex;align-items:center;justify-content:center;font-size:3.2rem;margin:-20px -20px 14px;background:var(--inp)}
+.tag{display:inline-block;background:var(--chip);border-radius:999px;padding:4px 12px;font-size:.8rem;margin:6px 6px 6px 0}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.price{color:var(--g);font-weight:800}
+.tog{display:flex;justify-content:space-between;align-items:center;background:var(--inp);padding:14px;border-radius:16px;margin-top:14px;gap:12px}
+.tog input{width:44px;height:24px;accent-color:var(--g)}
+footer{background:#1d2b24;color:#e9f1ec;padding:20px;text-align:center;font-size:.85rem}
+.hide{display:none}
+#msg{color:var(--g);font-size:.9rem;margin:8px 0 0}
+</style>
+</head>
+<body>
+<div class="top">
+  <a class="brand" href="#/">🌿 Ido-Osun Market</a>
+  <button class="ic" id="bt" title="Theme">🌙</button>
+  <button class="ic" id="bc" title="Cart">🛒<b id="cn">0</b></button>
+  <button class="ic" id="ba" title="Account">👤</button>
+</div>
+<main id="app"></main>
+<footer>© 2026 Ido-Osun Market · Launching with the Ido-Osun Digital Summit</footer>
+<script>
+var CATS=["Fresh Produce","Food","Fashion","Beads & Crafts","Pre-owned","Services","General"];
+var $=function(i){return document.getElementById(i)};
+var ls=function(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}};
+var sv=function(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+var tok=ls("t"),user=ls("u"),cart=ls("cart")||{},ST=[],cat="All",q="";
+var ngn=function(x){return "₦"+Number(x).toLocaleString("en-NG")};
+var esc=function(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})};
+var emoji={"Fresh Produce":"🥬","Food":"🍛","Fashion":"🧵","Beads & Crafts":"📿","Pre-owned":"🪑","Services":"🔧"};
+async function api(p,o){o=o||{};var h={"Content-Type":"application/json"};if(tok)h.Authorization="Bearer "+tok;
+  var r=await fetch("/api"+p,{method:o.m||"GET",headers:h,body:o.b?JSON.stringify(o.b):undefined});
+  var d=await r.json().catch(function(){return {}});
+  if(r.status===401&&tok){tok=null;user=null;sv("t");sv("u")}
+  if(!r.ok)throw new Error(d.error||"Something went wrong");return d}
+function fail(e){var m=$("msg");m?m.textContent=e.message:alert(e.message)}
+function count(){var n=0;for(var k in cart)n+=cart[k].q;$("cn").textContent=n}
+function opts(sel){return CATS.map(function(c){return '<option'+(c===sel?' selected':'')+'>'+c+'</option>'}).join("")}
+function list(){
+  var l=ST.filter(function(s){return (cat==="All"||s.category===cat)&&(s.name+" "+(s.description||"")+" "+s.category+" "+(s.location||"")).toLowerCase().indexOf(q)>-1});
+  return l.map(function(s){return '<div class="card"><div class="cover">'+(emoji[s.category]||"🛍️")+'</div><h2>'+esc(s.name)+'</h2><p class="m">'+esc(s.description||"")+'</p><span class="tag">'+esc(s.category)+'</span><p class="m">📍 '+esc(s.location||"Ido-Osun")+'</p><a class="btn" href="#/store/'+s.id+'">View store</a></div>'}).join("")||'<p class="m">No stores yet. Be the first vendor!</p>'}
+var V={};
+V.stores=async function(){ST=await api("/stores");
+  return '<div class="card"><h1>Our stores</h1><p class="m">Order straight from local vendors on WhatsApp.</p><input id="sq" type="search" placeholder="Search stores or products" value="'+esc(q)+'"><div class="chips" style="margin-top:12px">'+
+  ["All"].concat(CATS).map(function(c){return '<button class="chip'+(c===cat?' on':'')+'" data-cat="'+esc(c)+'">'+esc(c)+'</button>'}).join("")+'</div></div><div id="list">'+list()+'</div>'};
+V.store=async function(id){var s=await api("/stores/"+encodeURIComponent(id));
+  return '<a href="#/" class="m">← All stores</a><div class="card" style="margin-top:10px"><div class="cover">'+(emoji[s.category]||"🛍️")+'</div><h1>'+esc(s.name)+'</h1><p class="m">'+esc(s.description||"")+'</p><span class="tag">'+esc(s.category)+'</span><span class="tag">📍 '+esc(s.location||"Ido-Osun")+'</span><a class="btn wa" target="_blank" rel="noopener" href="https://wa.me/'+esc(s.whatsapp)+'">Chat with vendor on WhatsApp</a></div>'+
+  '<div class="card"><h2>Products</h2>'+(s.products.map(function(p){return '<div class="row"><div>'+esc(p.name)+'<div class="price">'+ngn(p.price)+'</div></div><button class="btn sm" data-add="'+p.id+'" data-s="'+s.id+'" data-sn="'+esc(s.name)+'" data-n="'+esc(p.name)+'" data-p="'+p.price+'">Add</button></div>'}).join("")||'<p class="m">No products listed yet.</p>')+'</div>'};
+V.cart=async function(){
+  var g={};Object.keys(cart).forEach(function(k){(g[cart[k].s]=g[cart[k].s]||[]).push(k)});var ids=Object.keys(g);
+  if(!ids.length)return '<div class="card"><h1>Your cart</h1><p class="m">Your cart is empty.</p><a class="btn" href="#/">Browse stores</a></div>';
+  return '<div class="card"><h1>Your cart</h1><p class="m">Each store is ordered separately and goes straight to that vendor on WhatsApp.</p><label>Your name</label><input id="bn" placeholder="Enter your name"><label>Delivery location or pickup</label><input id="bl" placeholder="e.g. Ido-Osun, near the market"></div>'+
+  ids.map(function(sid){var sub=0;return '<div class="card"><h2>'+esc(cart[g[sid][0]].sn)+'</h2>'+g[sid].map(function(k){var it=cart[k];sub+=it.p*it.q;return '<div class="row"><div>'+esc(it.n)+'<div class="m">'+ngn(it.p)+'</div></div><div><button class="ic" style="width:32px;height:32px" data-m="'+k+'">−</button> '+it.q+' <button class="ic" style="width:32px;height:32px" data-pl="'+k+'">+</button></div></div>'}).join("")+
+  '<div class="row"><strong>Subtotal</strong><strong class="price">'+ngn(sub)+'</strong></div><button class="btn wa" data-order="'+sid+'">Order on WhatsApp</button></div>'}).join("")+'<p id="msg"></p>'};
+V.login=async function(){return '<div class="card"><h1>Login to your account</h1><p class="m">Welcome back.</p><label><i>*</i> Email</label><input id="le" type="email" autocomplete="username"><label><i>*</i> Password</label><input id="lp" type="password" autocomplete="current-password"><button class="btn" id="go">Sign in</button><p id="msg"></p><p class="m" style="text-align:center">No account? <a href="#/register">Create one</a></p></div>'};
+V.register=async function(){return '<div class="card"><h1>Create your account</h1><p class="m">Join Ido-Osun Market to discover trusted local vendors.</p><label><i>*</i> First name</label><input id="fn"><label><i>*</i> Last name</label><input id="ln"><label><i>*</i> Email address</label><input id="re" type="email" autocomplete="username"><label>Referral code</label><input id="rc" placeholder="Optional"><label><i>*</i> Password (8+ characters)</label><input id="rp" type="password" autocomplete="new-password">'+
+  '<div class="tog"><div><strong>Are you registering as a vendor?</strong><div class="m" style="font-size:.8rem">Turn on if you plan to sell products or offer a service.</div></div><input type="checkbox" id="vt"></div>'+
+  '<div id="vf" class="hide"><label><i>*</i> Shop name</label><input id="vn"><label><i>*</i> WhatsApp number (orders come here)</label><input id="vw" type="tel" placeholder="2348012345678"><label>Category</label><select id="vc">'+opts("")+'</select><label>Location</label><input id="vl" placeholder="e.g. Ido-Osun"></div>'+
+  '<button class="btn" id="go">Create account</button><p id="msg"></p><p class="m" style="text-align:center">Already registered? <a href="#/login">Login</a></p></div>'};
+V.me=async function(){if(!user){location.hash="#/login";return ""}
+  return '<div class="card"><h1>Hi, '+esc(user.first)+'</h1>'+(user.role==="vendor"?'<a class="btn" href="#/dash">My store dashboard</a>':'')+(user.role==="admin"?'<a class="btn" href="#/admin">Approve vendors</a>':'')+'<button class="btn alt" id="out">Log out</button></div>'};
+V.dash=async function(){var s=await api("/vendor/store"),o=await api("/vendor/orders");
+  return '<div class="card"><h1>'+esc(s.name)+'</h1><span class="tag">'+esc(s.status)+'</span>'+(s.status!=="approved"?'<p class="m">Your store is waiting for approval. It appears publicly once approved.</p>':'')+
+  '<label>Shop name</label><input id="sn" value="'+esc(s.name)+'"><label>Description</label><textarea id="sd" rows="3">'+esc(s.description)+'</textarea><label>Category</label><select id="sc">'+opts(s.category)+'</select><label>Location</label><input id="sl" value="'+esc(s.location)+'"><label>WhatsApp number</label><input id="sw" type="tel" value="'+esc(s.whatsapp)+'"><button class="btn" id="ss">Save store</button><p id="msg"></p></div>'+
+  '<div class="card"><h2>Products</h2>'+s.products.map(function(p){return '<div class="row"><div>'+esc(p.name)+'<div class="price">'+ngn(p.price)+(p.active?'':' (hidden)')+'</div></div><div><button class="btn sm alt" data-ep="'+p.id+'" data-pr="'+p.price+'">Price</button><button class="btn sm alt" data-tp="'+p.id+'" data-a="'+p.active+'">'+(p.active?"Hide":"Show")+'</button><button class="btn sm alt" data-dp="'+p.id+'">✕</button></div></div>'}).join("")+
+  '<label>New product</label><input id="pn" placeholder="Name"><input id="pp" type="number" min="0" placeholder="Price in ₦" style="margin-top:8px"><button class="btn" id="ap">Add product</button></div>'+
+  '<div class="card"><h2>Recent orders</h2>'+(o.map(function(r){return '<div class="row"><div><strong>'+esc(r.buyer_name||"No name")+'</strong> <span class="m">'+new Date(r.created_at).toLocaleDateString("en-NG")+'</span><br><span class="m">'+r.items.map(function(i){return esc(i.qty+" x "+i.name)}).join(", ")+'</span></div><div class="price">'+ngn(r.total)+'</div></div>'}).join("")||'<p class="m">No orders yet.</p>')+'</div>'};
+V.admin=async function(){var l=await api("/admin/stores");
+  return '<div class="card"><h1>Vendor approvals</h1></div>'+l.map(function(s){return '<div class="card"><h2>'+esc(s.name)+'</h2><span class="tag">'+esc(s.status)+'</span><p class="m">'+esc(s.category)+' · '+esc(s.location||"")+'<br>'+esc(s.email)+' · WhatsApp '+esc(s.whatsapp)+'</p><button class="btn sm" data-ad="approve-'+s.id+'">Approve</button><button class="btn sm alt" data-ad="reject-'+s.id+'">Reject</button><button class="btn sm alt" data-ad="suspend-'+s.id+'">Suspend</button></div>'}).join("")};
+async function route(){var h=location.hash.replace("#/","").split("/"),f=V[h[0]||"stores"]||V.stores;
+  $("app").innerHTML='<p class="m">Loading…</p>';
+  try{$("app").innerHTML=await f(h[1])}catch(e){$("app").innerHTML='<div class="card"><p class="m">'+esc(e.message)+'</p><a class="btn" href="#/">Back to stores</a></div>'}
+  window.scrollTo(0,0)}
+async function act(fn){try{await fn()}catch(e){fail(e)}}
+function login(r){tok=r.token;user=r.user;sv("t",tok);sv("u",user);location.hash=user.role==="vendor"?"#/dash":"#/"}
+document.addEventListener("click",function(e){
+  var t=e.target.closest("button,a"),d=t?t.dataset:{};if(!t)return;
+  if(d.cat){cat=d.cat;route()}
+  if(d.add){var k=d.add;cart[k]=cart[k]||{s:d.s,sn:d.sn,n:d.n,p:+d.p,q:0};cart[k].q++;sv("cart",cart);count();t.textContent="Added ✓"}
+  if(d.pl){cart[d.pl].q++;sv("cart",cart);count();route()}
+  if(d.m){if(--cart[d.m].q<1)delete cart[d.m];sv("cart",cart);count();route()}
+  if(d.order)act(async function(){var sid=d.order,items=Object.keys(cart).filter(function(k){return cart[k].s==sid}).map(function(k){return {product_id:k,qty:cart[k].q}});
+    var r=await api("/orders",{m:"POST",b:{store_id:sid,items:items,name:$("bn").value,location:$("bl").value}});
+    items.forEach(function(i){delete cart[i.product_id]});sv("cart",cart);count();location.href=r.url});
+  if(t.id==="out"){tok=user=null;sv("t");sv("u");location.hash="#/"}
+  if(t.id==="go")act(async function(){
+    if($("le"))return login(await api("/auth/login",{m:"POST",b:{email:$("le").value,password:$("lp").value}}));
+    var b={first:$("fn").value,last:$("ln").value,email:$("re").value,password:$("rp").value,referral:$("rc").value};
+    if($("vt").checked)b.vendor={shop:$("vn").value,whatsapp:$("vw").value,category:$("vc").value,location:$("vl").value};
+    login(await api("/auth/register",{m:"POST",b:b}))});
+  if(t.id==="ss")act(async function(){await api("/vendor/store",{m:"PUT",b:{name:$("sn").value,description:$("sd").value,category:$("sc").value,location:$("sl").value,whatsapp:$("sw").value}});$("msg").textContent="Saved ✓"});
+  if(t.id==="ap")act(async function(){await api("/vendor/products",{m:"POST",b:{name:$("pn").value,price:$("pp").value}});route()});
+  if(d.ep)act(async function(){var p=prompt("New price in ₦",d.pr);if(p===null)return;await api("/vendor/products/"+d.ep,{m:"PUT",b:{price:p}});route()});
+  if(d.tp)act(async function(){await api("/vendor/products/"+d.tp,{m:"PUT",b:{active:d.a!=="true"}});route()});
+  if(d.dp&&confirm("Delete this product?"))act(async function(){await api("/vendor/products/"+d.dp,{m:"DELETE"});route()});
+  if(d.ad)act(async function(){var a=d.ad.split("-");await api("/admin/stores/"+a[1]+"/"+a[0],{m:"POST"});route()});
+});
+document.addEventListener("input",function(e){
+  if(e.target.id==="sq"){q=e.target.value.toLowerCase();$("list").innerHTML=list()}
+  if(e.target.id==="vt")$("vf").classList.toggle("hide",!e.target.checked)});
+$("bt").onclick=function(){var r=document.documentElement,d=r.getAttribute("data-theme")==="dark"||(!r.getAttribute("data-theme")&&matchMedia("(prefers-color-scheme:dark)").matches);r.setAttribute("data-theme",d?"light":"dark")};
+$("bc").onclick=function(){location.hash="#/cart"};
+$("ba").onclick=function(){location.hash=user?"#/me":"#/login"};
+window.addEventListener("hashchange",route);count();route();
+</script>
+</body>
+</html>

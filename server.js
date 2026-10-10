@@ -5,6 +5,10 @@ const { Pool } = require('pg'), bcrypt = require('bcryptjs'), jwt = require('jso
 const QRCode = require('qrcode');
 const demo = require('./demo');
 const webpush = require('web-push');
+const crypto = require('crypto');
+const mailer = require('./mailer');
+const APP_URL = (process.env.APP_URL || '').replace(/\/+$/, '');   // e.g. https://market.example.com (used in email links)
+const link = p => (APP_URL ? APP_URL + p : '');
 
 const { DATABASE_URL, JWT_SECRET, ADMIN_EMAIL = '' } = process.env;
 if (!DATABASE_URL || !JWT_SECRET || JWT_SECRET.length < 24) {
@@ -70,6 +74,10 @@ app.post('/api/auth/register', authLimit, ah(async (req, res) => {
       'INSERT INTO stores(owner_id,name,description,category,location,whatsapp) VALUES($1,$2,$3,$4,$5,$6)',
       [u.id, String(v.shop).trim().slice(0, 80), '', String(v.category || 'General').slice(0, 40), String(v.location || '').slice(0, 80), wa]);
     await c.query('COMMIT');
+    if (v) {   // emails never block sign-up
+      mailer.send({ to: email, ...mailer.tpl.welcomeVendor(String(v.shop).trim(), link('/#/dash')) });
+      if (ADMIN_EMAIL) mailer.send({ to: ADMIN_EMAIL, ...mailer.tpl.adminNewVendor(String(v.shop).trim(), `${b.first} ${b.last}`, email, wa, link('/#/admin')) });
+    }
     res.json({ token: sign(u), user: { first: u.first, role: u.role } });
   } catch (e) {
     await c.query('ROLLBACK');
@@ -83,6 +91,57 @@ app.post('/api/auth/login', authLimit, ah(async (req, res) => {
     [String(req.body.email || '').trim().toLowerCase()])).rows[0];
   if (!u || !(await bcrypt.compare(String(req.body.password || ''), u.password_hash))) return bad(res, 'Wrong email or password', 401);
   res.json({ token: sign(u), user: { first: u.first, role: u.role } });
+}));
+
+/* ---------- password reset by email ---------- */
+app.post('/api/auth/forgot', authLimit, ah(async (req, res) => {
+  res.json({ ok: true });   // same answer whether or not the email has an account, so nobody can probe for accounts
+  try {
+    const email = String(req.body.email || '').trim().toLowerCase();
+    if (!mailer.enabled || !APP_URL || !/^\S+@\S+\.\S+$/.test(email)) return;
+    const u = (await db.query('SELECT id FROM users WHERE email=$1', [email])).rows[0];
+    if (!u) return;
+    const token = crypto.randomBytes(32).toString('hex');
+    const c = await db.connect(); let allowed = false;
+    try {   // the lock makes "at most 3 per hour" hold even when requests arrive at the same moment
+      await c.query('BEGIN');
+      await c.query('SELECT pg_advisory_xact_lock($1)', [u.id]);
+      const recent = (await c.query("SELECT count(*)::int AS n FROM password_resets WHERE user_id=$1 AND created_at > now() - interval '1 hour'", [u.id])).rows[0].n;
+      if (recent < 3) {
+        await c.query("INSERT INTO password_resets(user_id,token_hash,expires_at) VALUES($1,$2, now() + interval '1 hour')", [u.id, crypto.createHash('sha256').update(token).digest('hex')]);
+        allowed = true;
+      }
+      await c.query('COMMIT');
+    } catch (e) { await c.query('ROLLBACK'); throw e; } finally { c.release(); }
+    if (allowed) await mailer.send({ to: email, ...mailer.tpl.reset(link('/#/reset/' + token)) });
+  } catch (e) { console.error('forgot password failed', e.message); }
+}));
+
+app.post('/api/auth/reset', authLimit, ah(async (req, res) => {
+  const pw = String(req.body.password || '');
+  if (pw.length < 8) return bad(res, 'Password needs at least 8 characters.');
+  const h = crypto.createHash('sha256').update(String(req.body.token || '')).digest('hex');
+  const hash = await bcrypt.hash(pw, 11);
+  const c = await db.connect();
+  let email;
+  try {
+    await c.query('BEGIN');
+    const r = (await c.query('UPDATE password_resets SET used=true WHERE token_hash=$1 AND NOT used AND expires_at>now() RETURNING user_id', [h])).rows[0];
+    if (!r) { await c.query('ROLLBACK'); return bad(res, 'This reset link is invalid or has expired. Please request a new one.'); }
+    email = (await c.query('UPDATE users SET password_hash=$2 WHERE id=$1 RETURNING email', [r.user_id, hash])).rows[0].email;
+    await c.query('UPDATE password_resets SET used=true WHERE user_id=$1', [r.user_id]);
+    await c.query('COMMIT');
+  } catch (e) { await c.query('ROLLBACK'); throw e; } finally { c.release(); }
+  mailer.send({ to: email, ...mailer.tpl.passwordChanged() });
+  res.json({ ok: true });
+}));
+
+app.get('/api/admin/email', need('admin'), (req, res) => res.json({ enabled: mailer.enabled, appUrl: !!APP_URL }));
+app.post('/api/admin/email/test', need('admin'), ah(async (req, res) => {
+  if (!mailer.enabled) return bad(res, 'Email is not set up yet. Add BREVO_API_KEY and MAIL_FROM on your host.');
+  const u = (await db.query('SELECT email FROM users WHERE id=$1', [req.user.id])).rows[0];
+  const r = await mailer.send({ to: u.email, ...mailer.tpl.test() });
+  r.ok ? res.json({ ok: true, to: u.email }) : bad(res, 'Brevo said: ' + r.error, 502);
 }));
 
 /* ---------- public catalogue ---------- */
@@ -131,19 +190,11 @@ app.get('/api/products/:id', ah(async (req, res) => {
   res.json(p);
 }));
 
-/* ---------- order alerts: optional email to the vendor (set RESEND_API_KEY and MAIL_FROM) ---------- */
-async function notify(storeId, subject, body) {
-  const { RESEND_API_KEY, MAIL_FROM } = process.env;
-  if (!RESEND_API_KEY || !MAIL_FROM) return;
+/* ---------- order alert email to the vendor (Brevo, see mailer.js) ---------- */
+async function notify(storeId, text) {
   try {
     const u = (await db.query('SELECT u.email FROM stores s JOIN users u ON u.id=s.owner_id WHERE s.id=$1', [storeId])).rows[0];
-    if (!u) return;
-    const r = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: MAIL_FROM, to: [u.email], subject, text: body }),
-    });
-    if (!r.ok) console.error('order email failed', r.status);
+    if (u) await mailer.send({ to: u.email, ...mailer.tpl.order(text, link('/#/dash')) });
   } catch (e) { console.error('order email failed', e.message); }
 }
 
@@ -183,7 +234,7 @@ app.post('/api/orders', orderLimit, ah(async (req, res) => {
     [s.id, buyer, loc, JSON.stringify(snap), total]);
   const text = [`Hello ${s.name}, I'd like to order from Ido-Osun Market:`, ...lines, `Total: ${ngn(total)}`,
     buyer && `Name: ${buyer}`, loc && `Delivery/pickup: ${loc}`].filter(Boolean).join('\n');
-  notify(s.id, 'New order on Ido-Osun Market', text);
+  notify(s.id, text);
   pushOrder(s.id, 'New order 🛒', `${buyer || 'A buyer'} ordered ${snap.length} item${snap.length > 1 ? 's' : ''} (${ngn(total)})`);
   res.json({ url: `https://wa.me/${s.whatsapp}?text=${encodeURIComponent(text)}` });
 }));
@@ -281,12 +332,15 @@ app.get('/api/admin/stores', need('admin'), ah(async (req, res) => {
 app.post('/api/admin/stores/:id/:action', need('admin'), ah(async (req, res) => {
   const st = { approve: 'approved', reject: 'rejected', suspend: 'suspended' }[req.params.action];
   if (!st) return bad(res, 'Unknown action');
-  await db.query('UPDATE stores SET status=$2 WHERE id=$1', [req.params.id, st]);
+  const r = await db.query('UPDATE stores SET status=$2 WHERE id=$1 RETURNING owner_id,name', [req.params.id, st]);
   res.json({ ok: true });
+  const s = r.rows[0];   // tell the vendor by email (never blocks the response)
+  if (s && st !== 'pending') db.query('SELECT email FROM users WHERE id=$1', [s.owner_id])
+    .then(q => q.rows[0] && mailer.send({ to: q.rows[0].email, ...mailer.tpl.storeStatus(s.name, st, link('/#/dash')) })).catch(() => {});
 }));
 
 /* ---------- public config, reports, QR codes ---------- */
-app.get('/api/config', (req, res) => res.json({ whatsapp: (process.env.ADMIN_WHATSAPP || '').replace(/\D/g, '') }));
+app.get('/api/config', (req, res) => res.json({ whatsapp: (process.env.ADMIN_WHATSAPP || '').replace(/\D/g, ''), email: mailer.enabled && !!APP_URL }));
 
 const REASONS = ['Fake or misleading listing', 'Did not deliver after payment', 'Prohibited item', 'Harassment or abuse', 'Other'];
 app.post('/api/reports', orderLimit, ah(async (req, res) => {

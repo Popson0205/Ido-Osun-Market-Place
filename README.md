@@ -33,8 +33,14 @@ Pages and products people have opened recently (and their photos) are saved on t
 ## Phone notifications for vendors
 Vendors can turn on notifications from their dashboard, and every new order then buzzes their phone. To enable it on the server, run `npm run vapid` once, then set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT` (for example `mailto:you@example.com`) on Railway and keep the private key secret. Without these the notification card simply does not appear. On iPhone (iOS 16.4 or later) the vendor must first add the app to the Home Screen and open it from there. Notifications are only accepted from the phone makers' own push services.
 
-## Order alerts
-Vendors see a badge on the account icon and a NEW tag on fresh orders in their dashboard. For email alerts too, create a free account at resend.com, verify your sending address, and set `RESEND_API_KEY` and `MAIL_FROM`. Without them the app simply skips email.
+## Email (Brevo)
+Brevo sends: new-order alerts to vendors, a welcome email to new vendors, a new-vendor alert to you (the admin), approved / rejected / suspended emails to vendors, and password reset links ("Forgot password?" on the login page). Vendors also see a badge on the account icon and a NEW tag on fresh orders in their dashboard. Without the email settings the app works as before and simply skips email.
+1. Create a Brevo account at brevo.com.
+2. Add and verify your sender address (Settings, then Senders, Domains & Dedicated IPs, then Senders). An address on a domain you own works best.
+3. Create an API key (Settings, then API Keys, then Generate a new API key). Brevo's menus change now and then.
+4. On Railway add `BREVO_API_KEY`, `MAIL_FROM` (the verified sender), `MAIL_FROM_NAME` (optional) and `APP_URL` (your live site address, for example `https://market.yourdomain.com`, no trailing slash).
+5. Open the admin screen and press **Send me a test email**. If Brevo rejects it, the message tells you why (most often the sender is not verified yet).
+Brevo's free plan has a daily sending limit, so check the current number on their pricing page. Demo accounts are never emailed. Password reset needs both Brevo and `APP_URL`, because the link in the email is built from it. Reset links work once and expire after an hour; a person who is already logged in elsewhere stays logged in until their session expires (7 days).
 
 ## Safety pages and reports
 The footer links to About, Safety tips, FAQ, Terms of service, Privacy policy and Contact. Set `ADMIN_WHATSAPP` so the Contact page and footer show your WhatsApp number. Each store has a "Report this store" button; reports appear at the top of the admin screen with Resolve and Suspend store buttons. The terms and privacy texts are a plain-language starting point: have a lawyer review them before launch and edit them in `public/index.html` (`PG` object).
@@ -59,4 +65,4 @@ Vendors add a store photo and a photo per product from their dashboard. The brow
 If the app logs a database SSL error, set `DB_SSL` to `true` or `false` to match your database.
 
 ## Not included yet
-password reset, email verification, Google sign-in, and delivery tracking. The referral code is stored but not used for rewards.
+Email verification, Google sign-in, and delivery tracking. The referral code is stored but not used for rewards.

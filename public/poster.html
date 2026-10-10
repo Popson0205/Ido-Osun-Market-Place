@@ -8,9 +8,9 @@ body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;c
 h1{font-size:2.4rem;margin:0;color:#2f5d50}
 .sub{font-size:1.2rem;margin:8px 0 24px}
 .qs{display:flex;gap:24px;justify-content:center;flex-wrap:wrap}
-.q{background:#fff;border:3px solid #2f5d50;border-radius:20px;padding:16px;width:300px}
+.q{background:#fff;border:3px solid #2f5d50;border-radius:20px;padding:14px;width:220px}
 .q img{width:100%;height:auto;display:block}
-.q b{display:block;font-size:1.25rem;margin-top:8px;color:#2f5d50}
+.q b{display:block;font-size:1.1rem;margin-top:8px;color:#2f5d50}
 .foot{margin-top:24px;font-size:1.05rem}
 button{margin:18px 0;padding:12px 22px;border:0;border-radius:999px;background:#2f5d50;color:#fff;font-size:1rem;cursor:pointer}
 @media print{button{display:none}body{background:#fff}}
@@ -21,6 +21,7 @@ button{margin:18px 0;padding:12px 22px;border:0;border-radius:999px;background:#
 <div class="qs">
   <div class="q"><img id="a" alt="QR code to browse stores"><b>Scan to shop</b></div>
   <div class="q"><img id="b" alt="QR code to become a vendor"><b>Scan to sell</b></div>
+  <div class="q"><img id="c" alt="QR code to install the app"><b>Scan to install</b></div>
 </div>
 <p class="foot" id="u"></p>
 <button onclick="window.print()">Print poster</button>
@@ -29,5 +30,6 @@ button{margin:18px 0;padding:12px 22px;border:0;border-radius:999px;background:#
 var o=location.origin;
 document.getElementById("a").src="/qr.svg?u="+encodeURIComponent(o+"/#/");
 document.getElementById("b").src="/qr.svg?u="+encodeURIComponent(o+"/#/register");
+document.getElementById("c").src="/qr.svg?u="+encodeURIComponent(o+"/#/install");
 document.getElementById("u").textContent=o.replace(/^https?:\/\//,"");
 </script></body></html>

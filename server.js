@@ -4,6 +4,7 @@ const express = require('express'), helmet = require('helmet'), rateLimit = requ
 const { Pool } = require('pg'), bcrypt = require('bcryptjs'), jwt = require('jsonwebtoken');
 const QRCode = require('qrcode');
 const demo = require('./demo');
+const webpush = require('web-push');
 
 const { DATABASE_URL, JWT_SECRET, ADMIN_EMAIL = '' } = process.env;
 if (!DATABASE_URL || !JWT_SECRET || JWT_SECRET.length < 24) {
@@ -17,6 +18,18 @@ const db = new Pool({
   ssl: (process.env.DB_SSL ? process.env.DB_SSL === 'true'
     : !/localhost|127\.0\.0\.1|\.railway\.internal/.test(DATABASE_URL)) ? { rejectUnauthorized: false } : false,
 });
+
+// Web Push for vendor order notifications. Optional: set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY (see README).
+let pushOn = false;
+try {
+  if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+    webpush.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:' + (ADMIN_EMAIL || 'admin@example.com'), process.env.VAPID_PUBLIC_KEY, process.env.VAPID_PRIVATE_KEY);
+    pushOn = true;
+  }
+} catch (e) { console.error('Push notifications disabled:', e.message); }
+// Subscriptions are only accepted from the browsers' own push services (stops vendors pointing the server at other sites).
+const PUSH_HOSTS = new RegExp('^(fcm\\.googleapis\\.com|android\\.googleapis\\.com|updates\\.push\\.services\\.mozilla\\.com|[\\w.-]+\\.push\\.services\\.mozilla\\.com|[\\w.-]+\\.push\\.apple\\.com|[\\w.-]+\\.notify\\.windows\\.com' +
+  (process.env.PUSH_EXTRA_HOSTS ? '|' + process.env.PUSH_EXTRA_HOSTS.split(',').map(h => h.trim().replace(/[^\w.-]/g, '')).filter(Boolean).join('|').replace(/\./g, '\\.') : '') + ')$');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -134,6 +147,22 @@ async function notify(storeId, subject, body) {
   } catch (e) { console.error('order email failed', e.message); }
 }
 
+async function pushOrder(storeId, title, body) {
+  if (!pushOn) return;
+  try {
+    const subs = (await db.query('SELECT ps.id,ps.endpoint,ps.p256dh,ps.auth FROM push_subs ps JOIN stores s ON s.owner_id=ps.user_id WHERE s.id=$1', [storeId])).rows;
+    await Promise.all(subs.map(async s => {
+      try {
+        await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+          JSON.stringify({ title, body, url: '/#/dash' }), { TTL: 86400, timeout: 5000 });
+      } catch (e) {
+        if (e.statusCode === 404 || e.statusCode === 410) await db.query('DELETE FROM push_subs WHERE id=$1', [s.id]);
+        else console.error('push failed', e.statusCode || e.message);
+      }
+    }));
+  } catch (e) { console.error('push failed', e.message); }
+}
+
 /* ---------- orders: prices come from the database, never the browser ---------- */
 app.post('/api/orders', orderLimit, ah(async (req, res) => {
   const { store_id, items, name, location } = req.body;
@@ -155,6 +184,7 @@ app.post('/api/orders', orderLimit, ah(async (req, res) => {
   const text = [`Hello ${s.name}, I'd like to order from Ido-Osun Market:`, ...lines, `Total: ${ngn(total)}`,
     buyer && `Name: ${buyer}`, loc && `Delivery/pickup: ${loc}`].filter(Boolean).join('\n');
   notify(s.id, 'New order on Ido-Osun Market', text);
+  pushOrder(s.id, 'New order 🛒', `${buyer || 'A buyer'} ordered ${snap.length} item${snap.length > 1 ? 's' : ''} (${ngn(total)})`);
   res.json({ url: `https://wa.me/${s.whatsapp}?text=${encodeURIComponent(text)}` });
 }));
 
@@ -280,6 +310,24 @@ app.get('/qr.svg', ah(async (req, res) => {
   if (!/^https?:\/\//.test(u) || u.length > 300) return bad(res, 'Invalid URL');
   res.type('image/svg+xml').set('Cache-Control', 'public, max-age=86400')
     .send(await QRCode.toString(u, { type: 'svg', margin: 1, width: 600 }));
+}));
+
+/* ---------- push notification subscriptions ---------- */
+app.get('/api/push/key', (req, res) => res.json({ key: pushOn ? process.env.VAPID_PUBLIC_KEY : null }));
+app.post('/api/vendor/push/subscribe', need('vendor'), ah(async (req, res) => {
+  if (!pushOn) return bad(res, 'Notifications are not set up on this server yet');
+  const { endpoint, keys } = req.body || {};
+  let host = '';
+  try { const u = new URL(endpoint); if (u.protocol === 'https:') host = u.hostname; } catch {}
+  if (!host || String(endpoint).length > 600 || !PUSH_HOSTS.test(host) || !keys || typeof keys.p256dh !== 'string' || typeof keys.auth !== 'string' || keys.p256dh.length > 200 || keys.auth.length > 100)
+    return bad(res, 'Invalid subscription');
+  await db.query('INSERT INTO push_subs(user_id,endpoint,p256dh,auth) VALUES($1,$2,$3,$4) ON CONFLICT (endpoint) DO UPDATE SET user_id=$1,p256dh=$3,auth=$4',
+    [req.user.id, endpoint, keys.p256dh, keys.auth]);
+  res.json({ ok: true });
+}));
+app.post('/api/vendor/push/unsubscribe', need('vendor'), ah(async (req, res) => {
+  await db.query('DELETE FROM push_subs WHERE user_id=$1 AND endpoint=$2', [req.user.id, String(req.body.endpoint || '')]);
+  res.json({ ok: true });
 }));
 
 /* ---------- demo data for presentations (admin only) ---------- */

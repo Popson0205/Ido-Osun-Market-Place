@@ -24,6 +24,15 @@ Vendors can set an optional **old price** (shows a -% badge and puts the product
 Admin screen > **Demo data** > *Load demo products*. It adds 9 sample stores and 28 products across all categories (9 with deal prices) with placeholder images. Enter your own WhatsApp number when asked, so orders placed during the demo open in your WhatsApp. The alert shows a demo vendor login so you can show the vendor dashboard. *Remove demo data* deletes everything it created and nothing else. Remove the demo data before opening to the public.
 To use real photos, replace files in `seed/images/` (same names, JPEG, under 400 KB) and press Reload. Edit `seed/demo.json` to change names, prices or descriptions.
 
+## Offline mode
+Pages and products people have opened recently (and their photos) are saved on the phone and still open without internet, with an "You are offline" banner because prices may be out of date. Placing orders, logging in and the vendor dashboard need a connection. Pages that were never opened show a friendly "Try again" message instead of an error.
+
+## Install guide
+`#/install` explains how to add the app to the home screen on Android and iPhone and shows a QR code. The home page shows a small "Get the app" strip on phones (it can be dismissed). The poster at `/poster.html` has a third QR code that opens the install guide.
+
+## Phone notifications for vendors
+Vendors can turn on notifications from their dashboard, and every new order then buzzes their phone. To enable it on the server, run `npm run vapid` once, then set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT` (for example `mailto:you@example.com`) on Railway and keep the private key secret. Without these the notification card simply does not appear. On iPhone (iOS 16.4 or later) the vendor must first add the app to the Home Screen and open it from there. Notifications are only accepted from the phone makers' own push services.
+
 ## Order alerts
 Vendors see a badge on the account icon and a NEW tag on fresh orders in their dashboard. For email alerts too, create a free account at resend.com, verify your sending address, and set `RESEND_API_KEY` and `MAIL_FROM`. Without them the app simply skips email.
 

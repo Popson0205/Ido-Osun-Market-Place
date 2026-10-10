@@ -4,7 +4,8 @@
   "private": true,
   "description": "Ido-Osun Market: local vendor marketplace with WhatsApp ordering",
   "main": "server.js",
-  "scripts": { "start": "node server.js" },
+  "scripts": { "start": "node server.js",
+    "vapid": "web-push generate-vapid-keys" },
   "engines": { "node": ">=18" },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -14,6 +15,7 @@
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.12.0",
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "web-push": "^3.6.7"
   }
 }
